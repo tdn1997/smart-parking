@@ -1,12 +1,12 @@
 #include <reg52.h>
 
 // ======= DINH NGHIA CHAN LCD (4-BIT MODE) =======
-sbit RS = P2 ^ 0; // Register Select
-sbit EN = P2 ^ 1; // Enable
-sbit D4 = P0 ^ 4; // Data bit 4
-sbit D5 = P0 ^ 5; // Data bit 5
-sbit D6 = P0 ^ 6; // Data bit 6
-sbit D7 = P0 ^ 7; // Data bit 7
+sbit RS = P2 ^ 6; // Register Select
+sbit EN = P2 ^ 7; // Enable
+sbit D4 = P3 ^ 4; // Data bit 4
+sbit D5 = P3 ^ 5; // Data bit 5
+sbit D6 = P3 ^ 6; // Data bit 6
+sbit D7 = P3 ^ 7; // Data bit 7
 
 // ======= DINH NGHIA CHAN NUT NHAN =======
 sbit BTN_UP = P1 ^ 6;   // Nut tang
@@ -16,9 +16,9 @@ sbit MOTOR_1 = P1 ^ 2; // vao
 sbit MOTOR_2 = P1 ^ 3; // ra
 
 // ======= DINH NGHIA CHAN 7-SEGMENT =======
-#define SEG_DATA P3 // Du lieu 7-segment (A-G)
-sbit SEG1 = P2 ^ 6; // COM1 - Hang chuc
-sbit SEG2 = P2 ^ 7; // COM2 - Hang don vi
+#define SEG_DATA P0 // Du lieu 7-segment (A-G)
+sbit SEG1 = P2 ^ 0; // COM1 - Hang chuc
+sbit SEG2 = P2 ^ 1; // COM2 - Hang don vi
 
 // ======= MA HIEN THI 7-SEGMENT =======
 unsigned char code seg_code[] = {
@@ -156,14 +156,14 @@ void Display_7Seg()
     // Hien thi hang chuc
     SEG1 = 0;
     SEG2 = 0;
-    P3 = seg_code[chuc];
+    SEG_DATA = seg_code[chuc];
     SEG1 = 1;
     delay_ms(2);
 
     // Hien thi hang don vi
     SEG1 = 0;
     SEG2 = 0;
-    P3 = seg_code[donvi];
+    SEG_DATA = seg_code[donvi];
     SEG2 = 1;
     delay_ms(2);
 }
@@ -174,12 +174,14 @@ void Update_LCD()
     // Tat ca bit cao de tranh xung dot
     SEG1 = 1;
     SEG2 = 1;
-    P3 = 0xFF;
+    SEG_DATA = 0xFF;
     delay_ms(5);
 
     // Dong 1: NHIET DO XX
-    LCD_Goto(0, 3);
+    LCD_Goto(0, 0);
     LCD_String("BIEN SO: ");
+    LCD_Goto(1, 0);
+    LCD_String("59_V1_000.00");
 }
 
 void moCuaChoXeVao()
