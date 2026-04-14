@@ -1,0 +1,330 @@
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:22:47 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE main.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include <reg52.h>
+   2          
+   3          // ======= DINH NGHIA CHAN LCD (4-BIT MODE) =======
+   4          sbit RS = P2 ^ 0; // Register Select
+   5          sbit EN = P2 ^ 1; // Enable
+   6          sbit D4 = P0 ^ 4; // Data bit 4
+   7          sbit D5 = P0 ^ 5; // Data bit 5
+   8          sbit D6 = P0 ^ 6; // Data bit 6
+   9          sbit D7 = P0 ^ 7; // Data bit 7
+  10          
+  11          // ======= DINH NGHIA CHAN NUT NHAN =======
+  12          sbit BTN_UP = P1 ^ 6;   // Nut tang
+  13          sbit BTN_DOWN = P1 ^ 7; // Nut giam
+  14          
+  15          sbit MOTOR_1 = P1 ^ 2; // vao
+  16          sbit MOTOR_2 = P1 ^ 3; // ra
+  17          
+  18          // ======= DINH NGHIA CHAN 7-SEGMENT =======
+  19          #define SEG_DATA P3 // Du lieu 7-segment (A-G)
+  20          sbit SEG1 = P2 ^ 6; // COM1 - Hang chuc
+  21          sbit SEG2 = P2 ^ 7; // COM2 - Hang don vi
+  22          
+  23          // ======= MA HIEN THI 7-SEGMENT =======
+  24          unsigned char code seg_code[] = {
+  25              0xC0, // 0
+  26              0xF9, // 1
+  27              0xA4, // 2
+  28              0xB0, // 3
+  29              0x99, // 4
+  30              0x92, // 5
+  31              0x82, // 6
+  32              0xF8, // 7
+  33              0x80, // 8
+  34              0x90  // 9
+  35          };
+  36          
+  37          // ======= BIEN TOAN CUC =======
+  38          unsigned char temp = 30;
+  39          
+  40          // ======= HAM TRE =======
+  41          void delay_ms(unsigned int ms)
+  42          {
+  43   1          unsigned int i, j;
+  44   1          for (i = 0; i < ms; i++)
+  45   1              for (j = 0; j < 120; j++)
+  46   1                  ;
+  47   1      }
+  48          
+  49          // ======= HAM GUI 4-BIT CHO LCD =======
+  50          void LCD_Send4Bit(unsigned char cX)
+  51          {
+  52   1          D7 = (cX >> 3) & 1;
+  53   1          D6 = (cX >> 2) & 1;
+  54   1          D5 = (cX >> 1) & 1;
+  55   1          D4 = cX & 1;
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:22:47 PAGE 2   
+
+  56   1      }
+  57          
+  58          // ======= HAM GUI XUNG ENABLE =======
+  59          void LCD_Enable()
+  60          {
+  61   1          EN = 1;
+  62   1          delay_ms(1);
+  63   1          EN = 0;
+  64   1          delay_ms(1);
+  65   1      }
+  66          
+  67          // ======= HAM GUI LENH CHO LCD =======
+  68          void LCD_Command(unsigned char cmd)
+  69          {
+  70   1          RS = 0;
+  71   1          LCD_Send4Bit(cmd >> 4);
+  72   1          LCD_Enable();
+  73   1          LCD_Send4Bit(cmd);
+  74   1          LCD_Enable();
+  75   1          delay_ms(2);
+  76   1      }
+  77          
+  78          // ======= HAM GUI DU LIEU CHO LCD =======
+  79          void LCD_Char(unsigned char chr)
+  80          {
+  81   1          RS = 1;
+  82   1          LCD_Send4Bit(chr >> 4);
+  83   1          LCD_Enable();
+  84   1          LCD_Send4Bit(chr);
+  85   1          LCD_Enable();
+  86   1          delay_ms(2);
+  87   1      }
+  88          
+  89          // ======= HAM KHOI TAO LCD 4-BIT =======
+  90          void LCD_Init()
+  91          {
+  92   1          delay_ms(50); // >40ms sau khi cấp nguồn
+  93   1          RS = 0;
+  94   1          EN = 0;
+  95   1      
+  96   1          // Khởi tạo mạnh cho 4-bit mode
+  97   1          LCD_Send4Bit(0x03);
+  98   1          LCD_Enable();
+  99   1          delay_ms(5);
+ 100   1      
+ 101   1          LCD_Send4Bit(0x03);
+ 102   1          LCD_Enable();
+ 103   1          delay_ms(5);
+ 104   1      
+ 105   1          LCD_Send4Bit(0x03);
+ 106   1          LCD_Enable();
+ 107   1          delay_ms(5);
+ 108   1      
+ 109   1          LCD_Send4Bit(0x02); // Chuyển sang 4-bit
+ 110   1          LCD_Enable();
+ 111   1          delay_ms(5);
+ 112   1      
+ 113   1          // Các lệnh cấu hình
+ 114   1          LCD_Command(0x28); // 4-bit, 2 dòng, font 5x8
+ 115   1          LCD_Command(0x0C); // Display ON, Cursor OFF, Blink OFF
+ 116   1          LCD_Command(0x06); // Tăng con trỏ sang phải
+ 117   1          LCD_Command(0x01); // Clear màn hình
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:22:47 PAGE 3   
+
+ 118   1          delay_ms(10);
+ 119   1      }
+ 120          
+ 121          // ======= HAM DIA CHI CON TRO VT TRI =======
+ 122          void LCD_Goto(unsigned char row, unsigned char col)
+ 123          {
+ 124   1          unsigned char address;
+ 125   1          if (row == 0)
+ 126   1              address = 0x80 + col; // Clear
+ 127   1          else
+ 128   1              address = 0xC0 + col;
+ 129   1          LCD_Command(address);
+ 130   1      }
+ 131          
+ 132          // ======= HAM HIEN THI CHUOI =======
+ 133          void LCD_String(char *str)
+ 134          {
+ 135   1          while (*str)
+ 136   1          {
+ 137   2              LCD_Char(*str++);
+ 138   2          }
+ 139   1      }
+ 140          
+ 141          // ======= HAM HIEN THI SO =======
+ 142          void LCD_Number(unsigned char num)
+ 143          {
+ 144   1          LCD_Char((num / 10) + '0');
+ 145   1          LCD_Char((num % 10) + '0');
+ 146   1      }
+ 147          
+ 148          // ======= HAM HIEN THI 7-SEGMENT =======
+ 149          void Display_7Seg()
+ 150          {
+ 151   1          unsigned char chuc, donvi;
+ 152   1          chuc = temp / 10;
+ 153   1          donvi = temp % 10;
+ 154   1      
+ 155   1          // ANODE chung: SEG1 de bat, SEG2 de tat
+ 156   1          // Hien thi hang chuc
+ 157   1          SEG1 = 0;
+ 158   1          SEG2 = 0;
+ 159   1          P3 = seg_code[chuc];
+ 160   1          SEG1 = 1;
+ 161   1          delay_ms(2);
+ 162   1      
+ 163   1          // Hien thi hang don vi
+ 164   1          SEG1 = 0;
+ 165   1          SEG2 = 0;
+ 166   1          P3 = seg_code[donvi];
+ 167   1          SEG2 = 1;
+ 168   1          delay_ms(2);
+ 169   1      }
+ 170          
+ 171          // ======= HAM CAP NHAT LCD =======
+ 172          void Update_LCD()
+ 173          {
+ 174   1          // Tat ca bit cao de tranh xung dot
+ 175   1          SEG1 = 1;
+ 176   1          SEG2 = 1;
+ 177   1          P3 = 0xFF;
+ 178   1          delay_ms(5);
+ 179   1      
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:22:47 PAGE 4   
+
+ 180   1          // Dong 1: NHIET DO XX
+ 181   1          LCD_Goto(0, 3);
+ 182   1          LCD_String("BIEN SO: ");
+ 183   1      }
+ 184          
+ 185          void moCuaChoXeVao()
+ 186          {
+ 187   1      
+ 188   1          MOTOR_1 = 1;   
+ 189   1          MOTOR_2 = 0;
+ 190   1      }
+ 191          
+ 192          void moCuaChoXeRa()
+ 193          {
+ 194   1      
+ 195   1          MOTOR_2 = 1;
+ 196   1          MOTOR_1 = 0;
+ 197   1      }
+ 198          
+ 199          // ======= HAM XU LY NUT NHAN =======
+ 200          void Process_Button()
+ 201          {
+ 202   1          static unsigned char btn_pressed = 0;
+ 203   1          unsigned char i;
+ 204   1      
+ 205   1          // Nut tang (nhan = 0)
+ 206   1          if (BTN_UP == 0 && !btn_pressed)
+ 207   1          {
+ 208   2              delay_ms(30);
+ 209   2              if (BTN_UP == 0)
+ 210   2              {
+ 211   3                  btn_pressed = 1;
+ 212   3                  if (temp < 99)
+ 213   3                  {
+ 214   4                      temp++;
+ 215   4                  }
+ 216   3                  Update_LCD();
+ 217   3      
+ 218   3                  // Hien thi 7-seg on dinh sau khi cap nhat
+ 219   3                  for (i = 0; i < 100; i++)
+ 220   3                  {
+ 221   4                      Display_7Seg();
+ 222   4                  }
+ 223   3      
+ 224   3                  moCuaChoXeVao();
+ 225   3              }
+ 226   2          }
+ 227   1      
+ 228   1          // Nut giam (nhan = 0)
+ 229   1          if (BTN_DOWN == 0 && !btn_pressed)
+ 230   1          {
+ 231   2              delay_ms(30);
+ 232   2              if (BTN_DOWN == 0)
+ 233   2              {
+ 234   3                  btn_pressed = 1;
+ 235   3                  if (temp > 0)
+ 236   3                  {
+ 237   4                      temp--;
+ 238   4                  }
+ 239   3                  Update_LCD();
+ 240   3      
+ 241   3                  // Hien thi 7-seg on dinh sau khi cap nhat
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:22:47 PAGE 5   
+
+ 242   3                  for (i = 0; i < 100; i++)
+ 243   3                  {
+ 244   4                      Display_7Seg();
+ 245   4                  }
+ 246   3      
+ 247   3                  moCuaChoXeRa();
+ 248   3              }
+ 249   2          }
+ 250   1      
+ 251   1          // Reset trang thai
+ 252   1          if (BTN_UP == 1 && BTN_DOWN == 1)
+ 253   1          {
+ 254   2              btn_pressed = 0;
+ 255   2          }
+ 256   1      }
+ 257          
+ 258          // ======= HAM MAIN =======
+ 259          void main()
+ 260          {
+ 261   1          unsigned char i;
+ 262   1      
+ 263   1          // Cau hinh port
+ 264   1          P3 = 0xFF; // Set cao de on dinh
+ 265   1          P1 = 0xFF; // Port 1 input (pull-up)
+ 266   1          P2 = 0x00; // Port 2 output
+ 267   1          P3 = 0x00; // Port 3 output
+ 268   1      
+ 269   1          // Tat 7-segment ban dau
+ 270   1          SEG1 = 1;
+ 271   1          SEG2 = 1;
+ 272   1      
+ 273   1          MOTOR_1 = 0;
+ 274   1          MOTOR_2 = 0;
+ 275   1          // Khoi tao LCD
+ 276   1          delay_ms(200);
+ 277   1          LCD_Init();
+ 278   1          delay_ms(100);
+ 279   1      
+ 280   1          Update_LCD();
+ 281   1      
+ 282   1          // Hien thi 7-seg on dinh sau khi khoi tao
+ 283   1          for (i = 0; i < 100; i++)
+ 284   1          {
+ 285   2              Display_7Seg();
+ 286   2          }
+ 287   1      
+ 288   1          // Vong lap chinh
+ 289   1          while (1)
+ 290   1          {
+ 291   2              // Hien thi 7-segment lien tuc
+ 292   2              Display_7Seg();
+ 293   2      
+ 294   2              // Kiem tra nut nhan
+ 295   2              Process_Button();
+ 296   2          }
+ 297   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    524    ----
+   CONSTANT SIZE    =     20    ----
+   XDATA SIZE       =   ----    ----
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:22:47 PAGE 6   
+
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      2       7
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
