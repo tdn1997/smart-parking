@@ -9,8 +9,8 @@ sbit D6 = P3 ^ 6; // Data bit 6
 sbit D7 = P3 ^ 7; // Data bit 7
 
 // ======= DINH NGHIA CHAN NUT NHAN =======
-sbit BTN_UP = P1 ^ 6;   // Nut tang
-sbit BTN_DOWN = P1 ^ 7; // Nut giam
+sbit BTN_IN  = P1 ^ 7; // Nut giam
+sbit BTN_OUT = P1 ^ 6; // Nut tang
 
 sbit MOTOR_1 = P1 ^ 2; // vao
 sbit MOTOR_2 = P1 ^ 3; // ra
@@ -169,25 +169,89 @@ void Display_7Seg()
 }
 
 // ======= HAM CAP NHAT LCD =======
+// ======= MẢNG 50 BIỂN SỐ XE NGẪU NHIÊN =======
+unsigned char code license_plates[50][15] = {
+    "92_D1_859.45",
+    "66_H3_854.23",
+    "95_X2_704.64",
+    "53_A2_323.39",
+    "83_Z1_674.35",
+    "97_X7_325.67",
+    "89_K1_877.30",
+    "96_S6_384.29",
+    "64_M2_194.58",
+    "57_N6_718.43",
+    "53_T9_227.58",
+    "56_X5_949.90",
+    "91_N4_821.18",
+    "53_H5_181.39",
+    "57_P5_564.91",
+    "74_F6_463.36",
+    "94_K2_723.91",
+    "61_X4_267.69",
+    "75_K9_324.97",
+    "71_B4_941.14",
+    "71_P5_167.37",
+    "88_M4_771.73",
+    "76_T3_371.27",
+    "66_X9_369.84",
+    "78_Y7_470.38",
+    "59_V8_193.16",
+    "58_E3_911.97",
+    "78_Z2_494.58",
+    "90_T9_357.80",
+    "51_D9_868.44",
+    "93_M2_400.65",
+    "61_T1_839.43",
+    "83_F9_208.90",
+    "70_V4_256.57",
+    "61_X9_100.86",
+    "71_U1_214.56",
+    "70_H1_346.82",
+    "56_C8_935.18",
+    "85_E3_775.70",
+    "86_F5_640.87",
+    "78_G9_873.98",
+    "63_L7_787.93",
+    "74_T9_562.25",
+    "66_H2_446.12",
+    "89_X4_702.38",
+    "51_C1_334.18",
+    "53_M2_626.40",
+    "68_U4_652.26",
+    "98_Y8_348.70",
+    "77_G2_199.94"};
+
+// ================== BIẾN TOÀN CỤC (thêm vào phần khai báo biến) ==================
+unsigned char current_index = 0; // Biến theo dõi biển số hiện tại
+
 void Update_LCD()
 {
-    // Tat ca bit cao de tranh xung dot
+    LCD_Command(0x01); // Clear màn hình
+
+    // Tắt 7-segment để tránh xung dot
     SEG1 = 1;
     SEG2 = 1;
     SEG_DATA = 0xFF;
     delay_ms(5);
 
-    // Dong 1: NHIET DO XX
+    // Dong 1:
     LCD_Goto(0, 0);
     LCD_String("BIEN SO: ");
+
+    // Dong 2: Hiển thị biển số theo thứ tự tăng dần
     LCD_Goto(1, 0);
-    LCD_String("59_V1_000.00");
+    LCD_String(license_plates[current_index]);
+
+    current_index++;
+    if (current_index >= 50)
+        current_index = 0;
 }
 
 void moCuaChoXeVao()
 {
 
-    MOTOR_1 = 1;   
+    MOTOR_1 = 1;
     MOTOR_2 = 0;
 }
 
@@ -205,10 +269,10 @@ void Process_Button()
     unsigned char i;
 
     // Nut tang (nhan = 0)
-    if (BTN_UP == 0 && !btn_pressed)
+    if (BTN_OUT == 0 && !btn_pressed)
     {
         delay_ms(30);
-        if (BTN_UP == 0)
+        if (BTN_OUT == 0)
         {
             btn_pressed = 1;
             if (temp < 99)
@@ -228,10 +292,10 @@ void Process_Button()
     }
 
     // Nut giam (nhan = 0)
-    if (BTN_DOWN == 0 && !btn_pressed)
+    if (BTN_IN == 0 && !btn_pressed)
     {
         delay_ms(30);
-        if (BTN_DOWN == 0)
+        if (BTN_IN == 0)
         {
             btn_pressed = 1;
             if (temp > 0)
@@ -251,7 +315,7 @@ void Process_Button()
     }
 
     // Reset trang thai
-    if (BTN_UP == 1 && BTN_DOWN == 1)
+    if (BTN_OUT == 1 && BTN_IN == 1)
     {
         btn_pressed = 0;
     }
@@ -271,15 +335,19 @@ void main()
     // Tat 7-segment ban dau
     SEG1 = 1;
     SEG2 = 1;
+    SEG_DATA = 0xFF;
 
     MOTOR_1 = 0;
     MOTOR_2 = 0;
+
     // Khoi tao LCD
     delay_ms(200);
     LCD_Init();
     delay_ms(100);
-
-    Update_LCD();
+    LCD_Goto(0, 0);
+    LCD_String("HE THONG NHUNG");
+    LCD_Goto(1, 0);
+    LCD_String("SMART PARKING");
 
     // Hien thi 7-seg on dinh sau khi khoi tao
     for (i = 0; i < 100; i++)

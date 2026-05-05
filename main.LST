@@ -1,4 +1,4 @@
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:45:53 PAGE 1   
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 17:07:09 PAGE 1   
 
 
 C51 COMPILER V9.01, COMPILATION OF MODULE MAIN
@@ -62,7 +62,7 @@ line level    source
   53   1          D6 = (cX >> 2) & 1;
   54   1          D5 = (cX >> 1) & 1;
   55   1          D4 = cX & 1;
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:45:53 PAGE 2   
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 17:07:09 PAGE 2   
 
   56   1      }
   57          
@@ -126,7 +126,7 @@ line level    source
  115   1          LCD_Command(0x0C); // Display ON, Cursor OFF, Blink OFF
  116   1          LCD_Command(0x06); // Tăng con trỏ sang phải
  117   1          LCD_Command(0x01); // Clear màn hình
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:45:53 PAGE 3   
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 17:07:09 PAGE 3   
 
  118   1          delay_ms(10);
  119   1      }
@@ -182,148 +182,218 @@ line level    source
  169   1      }
  170          
  171          // ======= HAM CAP NHAT LCD =======
- 172          void Update_LCD()
- 173          {
- 174   1          // Tat ca bit cao de tranh xung dot
- 175   1          SEG1 = 1;
- 176   1          SEG2 = 1;
- 177   1          SEG_DATA = 0xFF;
- 178   1          delay_ms(5);
- 179   1      
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:45:53 PAGE 4   
+ 172          // ======= MẢNG 50 BIỂN SỐ XE NGẪU NHIÊN =======
+ 173          unsigned char code license_plates[50][15] = {
+ 174              "92_D1_859.45",
+ 175              "66_H3_854.23",
+ 176              "95_X2_704.64",
+ 177              "53_A2_323.39",
+ 178              "83_Z1_674.35",
+ 179              "97_X7_325.67",
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 17:07:09 PAGE 4   
 
- 180   1          // Dong 1: NHIET DO XX
- 181   1          LCD_Goto(0, 0);
- 182   1          LCD_String("BIEN SO: ");
- 183   1          LCD_Goto(1, 0);
- 184   1          LCD_String("59_V1_000.00");
- 185   1      }
- 186          
- 187          void moCuaChoXeVao()
- 188          {
- 189   1      
- 190   1          MOTOR_1 = 1;   
- 191   1          MOTOR_2 = 0;
- 192   1      }
- 193          
- 194          void moCuaChoXeRa()
- 195          {
- 196   1      
- 197   1          MOTOR_2 = 1;
- 198   1          MOTOR_1 = 0;
- 199   1      }
- 200          
- 201          // ======= HAM XU LY NUT NHAN =======
- 202          void Process_Button()
- 203          {
- 204   1          static unsigned char btn_pressed = 0;
- 205   1          unsigned char i;
- 206   1      
- 207   1          // Nut tang (nhan = 0)
- 208   1          if (BTN_UP == 0 && !btn_pressed)
- 209   1          {
- 210   2              delay_ms(30);
- 211   2              if (BTN_UP == 0)
- 212   2              {
- 213   3                  btn_pressed = 1;
- 214   3                  if (temp < 99)
- 215   3                  {
- 216   4                      temp++;
- 217   4                  }
- 218   3                  Update_LCD();
- 219   3      
- 220   3                  // Hien thi 7-seg on dinh sau khi cap nhat
- 221   3                  for (i = 0; i < 100; i++)
- 222   3                  {
- 223   4                      Display_7Seg();
- 224   4                  }
- 225   3      
- 226   3                  moCuaChoXeVao();
- 227   3              }
- 228   2          }
- 229   1      
- 230   1          // Nut giam (nhan = 0)
- 231   1          if (BTN_DOWN == 0 && !btn_pressed)
- 232   1          {
- 233   2              delay_ms(30);
- 234   2              if (BTN_DOWN == 0)
- 235   2              {
- 236   3                  btn_pressed = 1;
- 237   3                  if (temp > 0)
- 238   3                  {
- 239   4                      temp--;
- 240   4                  }
- 241   3                  Update_LCD();
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:45:53 PAGE 5   
+ 180              "89_K1_877.30",
+ 181              "96_S6_384.29",
+ 182              "64_M2_194.58",
+ 183              "57_N6_718.43",
+ 184              "53_T9_227.58",
+ 185              "56_X5_949.90",
+ 186              "91_N4_821.18",
+ 187              "53_H5_181.39",
+ 188              "57_P5_564.91",
+ 189              "74_F6_463.36",
+ 190              "94_K2_723.91",
+ 191              "61_X4_267.69",
+ 192              "75_K9_324.97",
+ 193              "71_B4_941.14",
+ 194              "71_P5_167.37",
+ 195              "88_M4_771.73",
+ 196              "76_T3_371.27",
+ 197              "66_X9_369.84",
+ 198              "78_Y7_470.38",
+ 199              "59_V8_193.16",
+ 200              "58_E3_911.97",
+ 201              "78_Z2_494.58",
+ 202              "90_T9_357.80",
+ 203              "51_D9_868.44",
+ 204              "93_M2_400.65",
+ 205              "61_T1_839.43",
+ 206              "83_F9_208.90",
+ 207              "70_V4_256.57",
+ 208              "61_X9_100.86",
+ 209              "71_U1_214.56",
+ 210              "70_H1_346.82",
+ 211              "56_C8_935.18",
+ 212              "85_E3_775.70",
+ 213              "86_F5_640.87",
+ 214              "78_G9_873.98",
+ 215              "63_L7_787.93",
+ 216              "74_T9_562.25",
+ 217              "66_H2_446.12",
+ 218              "89_X4_702.38",
+ 219              "51_C1_334.18",
+ 220              "53_M2_626.40",
+ 221              "68_U4_652.26",
+ 222              "98_Y8_348.70",
+ 223              "77_G2_199.94"};
+ 224          
+ 225          // ================== BIẾN TOÀN CỤC (thêm vào phần khai báo biến) ==================
+ 226          unsigned char current_index = 0; // Biến theo dõi biển số hiện tại
+ 227          
+ 228          void Update_LCD()
+ 229          {
+ 230   1          LCD_Command(0x01); // Clear màn hình
+ 231   1      
+ 232   1          // Tắt 7-segment để tránh xung dot
+ 233   1          SEG1 = 1;
+ 234   1          SEG2 = 1;
+ 235   1          SEG_DATA = 0xFF;
+ 236   1          delay_ms(5);
+ 237   1      
+ 238   1          // Dong 1:
+ 239   1          LCD_Goto(0, 0);
+ 240   1          LCD_String("BIEN SO: ");
+ 241   1      
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 17:07:09 PAGE 5   
 
- 242   3      
- 243   3                  // Hien thi 7-seg on dinh sau khi cap nhat
- 244   3                  for (i = 0; i < 100; i++)
- 245   3                  {
- 246   4                      Display_7Seg();
- 247   4                  }
- 248   3      
- 249   3                  moCuaChoXeRa();
- 250   3              }
- 251   2          }
- 252   1      
- 253   1          // Reset trang thai
- 254   1          if (BTN_UP == 1 && BTN_DOWN == 1)
- 255   1          {
- 256   2              btn_pressed = 0;
- 257   2          }
- 258   1      }
- 259          
- 260          // ======= HAM MAIN =======
- 261          void main()
- 262          {
- 263   1          unsigned char i;
- 264   1      
- 265   1          // Cau hinh port
- 266   1          P3 = 0xFF; // Set cao de on dinh
- 267   1          P1 = 0xFF; // Port 1 input (pull-up)
- 268   1          P2 = 0x00; // Port 2 output
- 269   1          P3 = 0x00; // Port 3 output
+ 242   1          // Dong 2: Hiển thị biển số theo thứ tự tăng dần
+ 243   1          LCD_Goto(1, 0);
+ 244   1          LCD_String(license_plates[current_index]);
+ 245   1      
+ 246   1          current_index++;
+ 247   1          if (current_index >= 50)
+ 248   1              current_index = 0;
+ 249   1      }
+ 250          
+ 251          void moCuaChoXeVao()
+ 252          {
+ 253   1      
+ 254   1          MOTOR_1 = 1;
+ 255   1          MOTOR_2 = 0;
+ 256   1      }
+ 257          
+ 258          void moCuaChoXeRa()
+ 259          {
+ 260   1      
+ 261   1          MOTOR_2 = 1;
+ 262   1          MOTOR_1 = 0;
+ 263   1      }
+ 264          
+ 265          // ======= HAM XU LY NUT NHAN =======
+ 266          void Process_Button()
+ 267          {
+ 268   1          static unsigned char btn_pressed = 0;
+ 269   1          unsigned char i;
  270   1      
- 271   1          // Tat 7-segment ban dau
- 272   1          SEG1 = 1;
- 273   1          SEG2 = 1;
- 274   1      
- 275   1          MOTOR_1 = 0;
- 276   1          MOTOR_2 = 0;
- 277   1          // Khoi tao LCD
- 278   1          delay_ms(200);
- 279   1          LCD_Init();
- 280   1          delay_ms(100);
- 281   1      
- 282   1          Update_LCD();
- 283   1      
- 284   1          // Hien thi 7-seg on dinh sau khi khoi tao
- 285   1          for (i = 0; i < 100; i++)
- 286   1          {
- 287   2              Display_7Seg();
- 288   2          }
- 289   1      
- 290   1          // Vong lap chinh
- 291   1          while (1)
- 292   1          {
- 293   2              // Hien thi 7-segment lien tuc
- 294   2              Display_7Seg();
- 295   2      
- 296   2              // Kiem tra nut nhan
- 297   2              Process_Button();
- 298   2          }
- 299   1      }
+ 271   1          // Nut tang (nhan = 0)
+ 272   1          if (BTN_UP == 0 && !btn_pressed)
+ 273   1          {
+ 274   2              delay_ms(30);
+ 275   2              if (BTN_UP == 0)
+ 276   2              {
+ 277   3                  btn_pressed = 1;
+ 278   3                  if (temp < 99)
+ 279   3                  {
+ 280   4                      temp++;
+ 281   4                  }
+ 282   3                  Update_LCD();
+ 283   3      
+ 284   3                  // Hien thi 7-seg on dinh sau khi cap nhat
+ 285   3                  for (i = 0; i < 100; i++)
+ 286   3                  {
+ 287   4                      Display_7Seg();
+ 288   4                  }
+ 289   3      
+ 290   3                  moCuaChoXeVao();
+ 291   3              }
+ 292   2          }
+ 293   1      
+ 294   1          // Nut giam (nhan = 0)
+ 295   1          if (BTN_DOWN == 0 && !btn_pressed)
+ 296   1          {
+ 297   2              delay_ms(30);
+ 298   2              if (BTN_DOWN == 0)
+ 299   2              {
+ 300   3                  btn_pressed = 1;
+ 301   3                  if (temp > 0)
+ 302   3                  {
+ 303   4                      temp--;
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 17:07:09 PAGE 6   
+
+ 304   4                  }
+ 305   3                  Update_LCD();
+ 306   3      
+ 307   3                  // Hien thi 7-seg on dinh sau khi cap nhat
+ 308   3                  for (i = 0; i < 100; i++)
+ 309   3                  {
+ 310   4                      Display_7Seg();
+ 311   4                  }
+ 312   3      
+ 313   3                  moCuaChoXeRa();
+ 314   3              }
+ 315   2          }
+ 316   1      
+ 317   1          // Reset trang thai
+ 318   1          if (BTN_UP == 1 && BTN_DOWN == 1)
+ 319   1          {
+ 320   2              btn_pressed = 0;
+ 321   2          }
+ 322   1      }
+ 323          
+ 324          // ======= HAM MAIN =======
+ 325          void main()
+ 326          {
+ 327   1          unsigned char i;
+ 328   1      
+ 329   1          // Cau hinh port
+ 330   1          P3 = 0xFF; // Set cao de on dinh
+ 331   1          P1 = 0xFF; // Port 1 input (pull-up)
+ 332   1          P2 = 0x00; // Port 2 output
+ 333   1          P3 = 0x00; // Port 3 output
+ 334   1      
+ 335   1          // Tat 7-segment ban dau
+ 336   1          SEG1 = 1;
+ 337   1          SEG2 = 1;
+ 338   1          SEG_DATA = 0xFF;
+ 339   1      
+ 340   1          MOTOR_1 = 0;
+ 341   1          MOTOR_2 = 0;
+ 342   1      
+ 343   1          // Khoi tao LCD
+ 344   1          delay_ms(200);
+ 345   1          LCD_Init();
+ 346   1          delay_ms(100);
+ 347   1          LCD_Goto(0, 0);
+ 348   1          LCD_String("HE THONG NHUNG");
+ 349   1          LCD_Goto(1, 0);
+ 350   1          LCD_String("SMART PARKING");
+ 351   1      
+ 352   1          // Hien thi 7-seg on dinh sau khi khoi tao
+ 353   1          for (i = 0; i < 100; i++)
+ 354   1          {
+ 355   2              Display_7Seg();
+ 356   2          }
+ 357   1      
+ 358   1          // Vong lap chinh
+ 359   1          while (1)
+ 360   1          {
+ 361   2              // Hien thi 7-segment lien tuc
+ 362   2              Display_7Seg();
+ 363   2      
+ 364   2              // Kiem tra nut nhan
+ 365   2              Process_Button();
+C51 COMPILER V9.01   MAIN                                                                  04/14/2026 17:07:09 PAGE 7   
+
+ 366   2          }
+ 367   1      }
 
 
 MODULE INFORMATION:   STATIC OVERLAYABLE
-   CODE SIZE        =    539    ----
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 16:45:53 PAGE 6   
-
-   CONSTANT SIZE    =     33    ----
+   CODE SIZE        =    598    ----
+   CONSTANT SIZE    =    799    ----
    XDATA SIZE       =   ----    ----
    PDATA SIZE       =   ----    ----
-   DATA SIZE        =      2       7
+   DATA SIZE        =      3       7
    IDATA SIZE       =   ----    ----
    BIT SIZE         =   ----    ----
 END OF MODULE INFORMATION.
