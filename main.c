@@ -1,45 +1,54 @@
 #include <reg52.h>
 
-// ======= DINH NGHIA CHAN LCD (4-BIT MODE) =======
-sbit RS = P2 ^ 6; // Register Select
-sbit EN = P2 ^ 7; // Enable
-sbit D4 = P3 ^ 4; // Data bit 4
-sbit D5 = P3 ^ 5; // Data bit 5
-sbit D6 = P3 ^ 6; // Data bit 6
-sbit D7 = P3 ^ 7; // Data bit 7
+// ======= LCD1: LCD HIEN TAI (4-BIT MODE) =======
+sbit RS = P2 ^ 6;
+sbit EN = P2 ^ 7;
+sbit D4 = P3 ^ 4;
+sbit D5 = P3 ^ 5;
+sbit D6 = P3 ^ 6;
+sbit D7 = P3 ^ 7;
 
-// ======= DINH NGHIA CHAN NUT NHAN =======
-sbit BTN_IN = P1 ^ 6;  // Nut giam
-sbit BTN_OUT = P1 ^ 7; // Nut tang
+// ======= LCD2: HIEN THI CHO TRONG (4-BIT MODE) =======
+sbit LCD2_RS = P2 ^ 4;
+sbit LCD2_EN = P2 ^ 5;
+sbit LCD2_D4 = P3 ^ 0;
+sbit LCD2_D5 = P3 ^ 1;
+sbit LCD2_D6 = P3 ^ 2;
+sbit LCD2_D7 = P3 ^ 3;
 
-sbit SERVO_PIN_IN  = P1 ^ 4; // vao
-sbit SERVO_PIN_OUT = P1 ^ 5; // ra
+// ======= BUTTON =======
+sbit BTN_IN = P1 ^ 6;
+sbit BTN_OUT = P1 ^ 7;
 
-// Biến điều khiển góc servo
-unsigned int servo_pulse = 1500; // Pulse width (us): 1000 = -90°, 1500 = 0°, 2000 = +90°
-bit servo_state = 0;             // 0 = OFF period, 1 = ON period
+// ======= SERVO =======
+sbit SERVO_PIN_IN = P1 ^ 4;
+sbit SERVO_PIN_OUT = P1 ^ 5;
 
-// ======= DINH NGHIA CHAN 7-SEGMENT =======
-#define SEG_DATA P0 // Du lieu 7-segment (A-G)
-sbit SEG1 = P2 ^ 0; // COM1 - Hang chuc
-sbit SEG2 = P2 ^ 1; // COM2 - Hang don vi
+#define CHANNEL_IN  0
+#define CHANNEL_OUT 1
 
-// ======= MA HIEN THI 7-SEGMENT =======
-unsigned char code seg_code[] = {
-    0xC0, // 0
-    0xF9, // 1
-    0xA4, // 2
-    0xB0, // 3
-    0x99, // 4
-    0x92, // 5
-    0x82, // 6
-    0xF8, // 7
-    0x80, // 8
-    0x90  // 9
-};
+#define SERVO_CLOSE_PULSE 800
+#define SERVO_OPEN_PULSE  2200
+#define SERVO_PERIOD_US   20000
+#define SERVO_TICK_US     100
+#define SERVO_HOLD_MS     10000
+
+#define DEBOUNCE_MS       30
+#define TIMER0_RELOAD     (65536 - SERVO_TICK_US)
+#define LCD_1             0
+#define LCD_2             1
+
 
 // ======= BIEN TOAN CUC =======
 unsigned char temp = 30;
+volatile unsigned int system_ms = 0;
+volatile unsigned int pwm_counter_us = 0;
+volatile unsigned int servo_pulse_in = SERVO_CLOSE_PULSE;
+volatile unsigned int servo_pulse_out = SERVO_CLOSE_PULSE;
+volatile unsigned int in_timer = 0;
+volatile unsigned int out_timer = 0;
+bit in_active = 0;
+bit out_active = 0;
 
 // ======= HAM TRE =======
 void delay_ms(unsigned int ms)
@@ -50,130 +59,145 @@ void delay_ms(unsigned int ms)
             ;
 }
 
-// ======= HAM GUI 4-BIT CHO LCD =======
-void LCD_Send4Bit(unsigned char cX)
+// ======= LCD =======
+void Lcd_SetRS(unsigned char lcd, unsigned char value)
 {
-    D7 = (cX >> 3) & 1;
-    D6 = (cX >> 2) & 1;
-    D5 = (cX >> 1) & 1;
-    D4 = cX & 1;
-}
-
-// ======= HAM GUI XUNG ENABLE =======
-void LCD_Enable()
-{
-    EN = 1;
-    delay_ms(1);
-    EN = 0;
-    delay_ms(1);
-}
-
-// ======= HAM GUI LENH CHO LCD =======
-void LCD_Command(unsigned char cmd)
-{
-    RS = 0;
-    LCD_Send4Bit(cmd >> 4);
-    LCD_Enable();
-    LCD_Send4Bit(cmd);
-    LCD_Enable();
-    delay_ms(2);
-}
-
-// ======= HAM GUI DU LIEU CHO LCD =======
-void LCD_Char(unsigned char chr)
-{
-    RS = 1;
-    LCD_Send4Bit(chr >> 4);
-    LCD_Enable();
-    LCD_Send4Bit(chr);
-    LCD_Enable();
-    delay_ms(2);
-}
-
-// ======= HAM KHOI TAO LCD 4-BIT =======
-void LCD_Init()
-{
-    delay_ms(50); // >40ms sau khi cấp nguồn
-    RS = 0;
-    EN = 0;
-
-    // Khởi tạo mạnh cho 4-bit mode
-    LCD_Send4Bit(0x03);
-    LCD_Enable();
-    delay_ms(5);
-
-    LCD_Send4Bit(0x03);
-    LCD_Enable();
-    delay_ms(5);
-
-    LCD_Send4Bit(0x03);
-    LCD_Enable();
-    delay_ms(5);
-
-    LCD_Send4Bit(0x02); // Chuyển sang 4-bit
-    LCD_Enable();
-    delay_ms(5);
-
-    // Các lệnh cấu hình
-    LCD_Command(0x28); // 4-bit, 2 dòng, font 5x8
-    LCD_Command(0x0C); // Display ON, Cursor OFF, Blink OFF
-    LCD_Command(0x06); // Tăng con trỏ sang phải
-    LCD_Command(0x01); // Clear màn hình
-    delay_ms(10);
-}
-
-// ======= HAM DIA CHI CON TRO VT TRI =======
-void LCD_Goto(unsigned char row, unsigned char col)
-{
-    unsigned char address;
-    if (row == 0)
-        address = 0x80 + col; // Clear
+    if (lcd == LCD_1)
+        RS = value;
     else
-        address = 0xC0 + col;
-    LCD_Command(address);
+        LCD2_RS = value;
 }
 
-// ======= HAM HIEN THI CHUOI =======
-void LCD_String(char *str)
+void Lcd_Send4Bit(unsigned char lcd, unsigned char cX)
 {
-    while (*str)
+    if (lcd == LCD_1)
     {
-        LCD_Char(*str++);
+        D7 = (cX >> 3) & 1;
+        D6 = (cX >> 2) & 1;
+        D5 = (cX >> 1) & 1;
+        D4 = cX & 1;
+    }
+    else
+    {
+        LCD2_D7 = (cX >> 3) & 1;
+        LCD2_D6 = (cX >> 2) & 1;
+        LCD2_D5 = (cX >> 1) & 1;
+        LCD2_D4 = cX & 1;
     }
 }
 
-// ======= HAM HIEN THI SO =======
-void LCD_Number(unsigned char num)
+void Lcd_Enable(unsigned char lcd)
 {
-    LCD_Char((num / 10) + '0');
-    LCD_Char((num % 10) + '0');
+    if (lcd == LCD_1)
+    {
+        EN = 1;
+        delay_ms(1);
+        EN = 0;
+    }
+    else
+    {
+        LCD2_EN = 1;
+        delay_ms(1);
+        LCD2_EN = 0;
+    }
+    delay_ms(1);
 }
 
-// ======= HAM HIEN THI 7-SEGMENT =======
-void Display_7Seg()
+void Lcd_Write(unsigned char lcd, unsigned char rs, unsigned char value)
 {
-    unsigned char chuc, donvi;
-    chuc = temp / 10;
-    donvi = temp % 10;
-
-    // ANODE chung: SEG1 de bat, SEG2 de tat
-    // Hien thi hang chuc
-    SEG1 = 0;
-    SEG2 = 0;
-    SEG_DATA = seg_code[chuc];
-    SEG1 = 1;
-    delay_ms(2);
-
-    // Hien thi hang don vi
-    SEG1 = 0;
-    SEG2 = 0;
-    SEG_DATA = seg_code[donvi];
-    SEG2 = 1;
+    Lcd_SetRS(lcd, rs);
+    Lcd_Send4Bit(lcd, value >> 4);
+    Lcd_Enable(lcd);
+    Lcd_Send4Bit(lcd, value);
+    Lcd_Enable(lcd);
     delay_ms(2);
 }
 
-// ======= HAM CAP NHAT LCD =======
-// ======= MẢNG 50 BIỂN SỐ XE NGẪU NHIÊN =======
+void Lcd_Command(unsigned char lcd, unsigned char cmd)
+{
+    Lcd_Write(lcd, 0, cmd);
+}
+
+void Lcd_Char(unsigned char lcd, unsigned char chr)
+{
+    Lcd_Write(lcd, 1, chr);
+}
+
+void Lcd_Init(unsigned char lcd)
+{
+    unsigned char i;
+
+    delay_ms(50);
+    Lcd_SetRS(lcd, 0);
+    if (lcd == LCD_1)
+        EN = 0;
+    else
+        LCD2_EN = 0;
+
+    for (i = 0; i < 3; i++)
+    {
+        Lcd_Send4Bit(lcd, 0x03);
+        Lcd_Enable(lcd);
+        delay_ms(5);
+    }
+
+    Lcd_Send4Bit(lcd, 0x02);
+    Lcd_Enable(lcd);
+    delay_ms(5);
+
+    Lcd_Command(lcd, 0x28);
+    Lcd_Command(lcd, 0x0C);
+    Lcd_Command(lcd, 0x06);
+    Lcd_Command(lcd, 0x01);
+    delay_ms(10);
+}
+
+void Lcd_Goto(unsigned char lcd, unsigned char row, unsigned char col)
+{
+    if (row == 0)
+        Lcd_Command(lcd, 0x80 + col);
+    else
+        Lcd_Command(lcd, 0xC0 + col);
+}
+
+void Lcd_String(unsigned char lcd, char *str)
+{
+    while (*str)
+        Lcd_Char(lcd, *str++);
+}
+
+void Lcd_Number(unsigned char lcd, unsigned char num)
+{
+    unsigned char tens = 0;
+
+    while (num >= 10)
+    {
+        num -= 10;
+        tens++;
+    }
+
+    Lcd_Char(lcd, tens + '0');
+    Lcd_Char(lcd, num + '0');
+}
+
+void Update_LCD2_Slot()
+{
+    static unsigned char last_temp = 255;
+
+    if (last_temp == temp)
+        return;
+
+    last_temp = temp;
+
+    Lcd_Goto(LCD_2, 0, 0);
+    Lcd_String(LCD_2, "CHO CON TRONG   ");
+
+    Lcd_Goto(LCD_2, 1, 0);
+    Lcd_Number(LCD_2, temp);
+    Lcd_String(LCD_2, "              ");
+}
+
+// ======= MANG 50 BIEN SO XE NGAU NHIEN =======
 unsigned char code license_plates[50][15] = {
     "92_D1_859.45",
     "66_H3_854.23",
@@ -226,201 +250,235 @@ unsigned char code license_plates[50][15] = {
     "98_Y8_348.70",
     "77_G2_199.94"};
 
-// ================== BIẾN TOÀN CỤC (thêm vào phần khai báo biến) ==================
-unsigned char current_index = 0; // Biến theo dõi biển số hiện tại
+unsigned char current_index = 0;
 
 void Update_LCD()
 {
-    LCD_Command(0x01); // Clear màn hình
+    Lcd_Command(LCD_1, 0x01);
 
-    // Tắt 7-segment để tránh xung dot
-    SEG1 = 1;
-    SEG2 = 1;
-    SEG_DATA = 0xFF;
-    delay_ms(5);
+    Lcd_Goto(LCD_1, 0, 0);
+    Lcd_String(LCD_1, "BIEN SO: ");
 
-    // Dong 1:
-    LCD_Goto(0, 0);
-    LCD_String("BIEN SO: ");
-
-    // Dong 2: Hiển thị biển số theo thứ tự tăng dần
-    LCD_Goto(1, 0);
-    LCD_String(license_plates[current_index]);
-
+    Lcd_Goto(LCD_1, 1, 0);
+    Lcd_String(LCD_1, license_plates[current_index]);
+    
     current_index++;
     if (current_index >= 50)
         current_index = 0;
 }
-void servo_delay(unsigned char us) // delay nhỏ, tinh chỉnh dễ
+
+// ======= SERVO =======
+void Servo_SetPulse(unsigned char channel, unsigned int pulse)
 {
-    unsigned char i;
-    for (i = 0; i < us; i++)
-        ;
+    unsigned char ea_state;
+
+    ea_state = EA;
+    EA = 0;
+
+    if (channel == CHANNEL_IN)
+        servo_pulse_in = pulse;
+    else
+        servo_pulse_out = pulse;
+
+    EA = ea_state;
 }
 
-// Khởi tạo Timer cho Servo PWM (gọi 1 lần trong main())
+void Servo_Open(unsigned char channel)
+{
+    unsigned char ea_state;
+
+    Servo_SetPulse(channel, SERVO_OPEN_PULSE);
+
+    ea_state = EA;
+    EA = 0;
+    if (channel == CHANNEL_IN)
+    {
+        in_timer = SERVO_HOLD_MS;
+        in_active = 1;
+    }
+    else
+    {
+        out_timer = SERVO_HOLD_MS;
+        out_active = 1;
+    }
+    EA = ea_state;
+}
+
+void Servo_Close(unsigned char channel)
+{
+    unsigned char ea_state;
+
+    Servo_SetPulse(channel, SERVO_CLOSE_PULSE);
+
+    ea_state = EA;
+    EA = 0;
+    if (channel == CHANNEL_IN)
+        in_active = 0;
+    else
+        out_active = 0;
+    EA = ea_state;
+}
+
 void Servo_Init(void)
 {
-    TMOD = 0x11; // Timer0 và Timer1 mode 1 (16-bit)
+    SERVO_PIN_IN = 0;
+    SERVO_PIN_OUT = 0;
 
-    // Timer 0: Tạo chu kỳ 20ms (50Hz)
-    TH0 = (65536 - 20000) >> 8; // Giá trị ban đầu cho 20ms
-    TL0 = (65536 - 20000) & 0xFF;
+    TMOD = (TMOD & 0xF0) | 0x01;
+    TH0 = TIMER0_RELOAD >> 8;
+    TL0 = TIMER0_RELOAD & 0xFF;
 
-    // Timer 1: Tạo pulse width (sẽ thay đổi động)
-    TH1 = (65536 - 1500) >> 8; // Ban đầu 1.5ms
-    TL1 = (65536 - 1500) & 0xFF;
-
-    ET0 = 1; // Enable Timer 0 interrupt
-    ET1 = 1; // Enable Timer 1 interrupt
-    EA = 1;  // Enable global interrupt
-
-    TR0 = 1; // Bật Timer 0
-    TR1 = 0; // Timer 1 sẽ bật trong ISR
+    ET0 = 1;
+    EA = 1;
+    TR0 = 1;
 }
-// Timer 0 Interrupt: Tạo chu kỳ 20ms
+
 void Timer0_ISR() interrupt 1
 {
-    // Reload cho 20ms
-    TH0 = (65536 - 20000) >> 8;
-    TL0 = (65536 - 20000) & 0xFF;
+    static unsigned char ms_divider = 0;
 
-    servo_state = 1; // Bắt đầu pulse ON
-    SERVO_PIN_IN = 1;
+    TH0 = TIMER0_RELOAD >> 8;
+    TL0 = TIMER0_RELOAD & 0xFF;
 
-    // Load Timer 1 với pulse width hiện tại
-    TH1 = (65536 - servo_pulse) >> 8;
-    TL1 = (65536 - servo_pulse) & 0xFF;
-
-    TR1 = 1; // Bật Timer 1
-}
-
-// Timer 1 Interrupt: Kết thúc pulse (tắt pin)
-void Timer1_ISR() interrupt 3
-{
-    TR1 = 0; // Tắt Timer 1
-    SERVO_PIN_IN = 0;
-    servo_state = 0;
-}
-
-// Mở thanh chắn (góc dương ≈ +70° ~ +90°)
-void Barrier_Open(void)
-{
-    servo_pulse = 2200; // Thử vùng 2000 ~ 2500
-}
-
-// Đóng thanh chắn (góc -90°)
-void Barrier_Close(void)
-{
-    servo_pulse = 800; // Thử vùng 700 ~ 1000
-}
-
-// ======= HAM XU LY NUT NHAN =======
-void Process_Button()
-{
-    static unsigned char btn_pressed = 0;
-    unsigned char i;
-
-    // Nut tang (nhan = 0)
-    if (BTN_OUT == 0 && !btn_pressed)
+    pwm_counter_us += SERVO_TICK_US;
+    if (pwm_counter_us >= SERVO_PERIOD_US)
     {
-        delay_ms(30);
-        if (BTN_OUT == 0)
+        pwm_counter_us = 0;
+        SERVO_PIN_IN = 1;
+        SERVO_PIN_OUT = 1;
+    }
+
+    if (pwm_counter_us >= servo_pulse_in)
+        SERVO_PIN_IN = 0;
+    if (pwm_counter_us >= servo_pulse_out)
+        SERVO_PIN_OUT = 0;
+
+    ms_divider++;
+    if (ms_divider >= 10)
+    {
+        ms_divider = 0;
+        system_ms++;
+
+        if (in_active && in_timer > 0)
+            in_timer--;
+        if (out_active && out_timer > 0)
+            out_timer--;
+    }
+}
+
+void Servo_Control()
+{
+    unsigned char close_in = 0;
+    unsigned char close_out = 0;
+    unsigned char ea_state;
+
+    ea_state = EA;
+    EA = 0;
+    if (in_active && in_timer == 0)
+        close_in = 1;
+    if (out_active && out_timer == 0)
+        close_out = 1;
+    EA = ea_state;
+
+    if (close_in)
+        Servo_Close(CHANNEL_IN);
+
+    if (close_out)
+        Servo_Close(CHANNEL_OUT);
+}
+
+// ======= BUTTON =======
+void Handle_Button_Event(unsigned char channel)
+{
+    unsigned char changed = 0;
+
+    if (channel == CHANNEL_IN)
+    {
+        if (temp > 0)
         {
-            btn_pressed = 1;
-            if (temp < 99)
-            {
-                temp++;
-            }
-            Update_LCD();
-
-            // Hien thi 7-seg on dinh sau khi cap nhat
-            for (i = 0; i < 100; i++)
-            {
-                Display_7Seg();
-            }
-
-            Barrier_Open(); // Mở thanh chắn
-            delay_ms(1500); // Giữ 1.5 giây (có thể thay bằng non-blocking)
-
-            Barrier_Close(); // Đóng thanh chắn
+            temp--;
+            changed = 1;
+        }
+    }
+    else
+    {
+        if (temp < 99)
+        {
+            temp++;
+            changed = 1;
         }
     }
 
-    // Nut giam (nhan = 0)
-    if (BTN_IN == 0 && !btn_pressed)
+    if (changed)
+        Update_LCD2_Slot();
+
+    Update_LCD();
+    Servo_Open(channel);
+}
+
+void Handle_Button_Channel(unsigned char channel, unsigned char current_state)
+{
+    static unsigned char last_read[2] = {1, 1};
+    static unsigned char stable_state[2] = {1, 1};
+    static unsigned int last_change_ms[2] = {0, 0};
+    unsigned int now;
+    unsigned char ea_state;
+
+    ea_state = EA;
+    EA = 0;
+    now = system_ms;
+    EA = ea_state;
+
+    if (current_state != last_read[channel])
     {
-        delay_ms(30);
-        if (BTN_IN == 0)
-        {
-            btn_pressed = 1;
-            if (temp > 0)
-            {
-                temp--;
-            }
-            Update_LCD();
-
-            // Hien thi 7-seg on dinh sau khi cap nhat
-            for (i = 0; i < 100; i++)
-            {
-                Display_7Seg();
-            }
-
-            Barrier_Open(); // Mở thanh chắn
-            delay_ms(1500); // Giữ 1.5 giây (có thể thay bằng non-blocking)
-
-            Barrier_Close(); // Đóng thanh chắn
-        }
+        last_read[channel] = current_state;
+        last_change_ms[channel] = now;
     }
 
-    // Reset trang thai
-    if (BTN_OUT == 1 && BTN_IN == 1)
+    if ((unsigned int)(now - last_change_ms[channel]) >= DEBOUNCE_MS)
     {
-        btn_pressed = 0;
+        if (current_state != stable_state[channel])
+        {
+            stable_state[channel] = current_state;
+            if (stable_state[channel] == 0)
+                Handle_Button_Event(channel);
+        }
     }
 }
 
-// ======= HAM MAIN =======
+void Handle_Button()
+{
+    Handle_Button_Channel(CHANNEL_IN, BTN_IN);
+    Handle_Button_Channel(CHANNEL_OUT, BTN_OUT);
+}
+
+// ======= MAIN =======
 void main()
 {
-    unsigned char i;
+    BTN_IN = 1;
+    BTN_OUT = 1;
+    P1 = 0xFF;
+    P2 = 0x00;
+    P3 = 0x00;
 
-    // Cau hinh port
-    P3 = 0xFF; // Set cao de on dinh
-    P1 = 0xFF; // Port 1 input (pull-up)
-    P2 = 0x00; // Port 2 output
-    P3 = 0x00; // Port 3 output
+    Servo_Init();
+    Servo_Close(CHANNEL_IN);
+    Servo_Close(CHANNEL_OUT);
 
-    // Tat 7-segment ban dau
-    SEG1 = 1;
-    SEG2 = 1;
-    SEG_DATA = 0xFF;
-
-    Servo_Init();    // Khởi tạo servo PWM interrupt
-    Barrier_Close(); // Ban đầu đóng thanh chắn
-
-    // Khoi tao LCD
     delay_ms(200);
-    LCD_Init();
-    delay_ms(100);
-    LCD_Goto(0, 0);
-    LCD_String("HE THONG NHUNG");
-    LCD_Goto(1, 0);
-    LCD_String("SMART PARKING");
+    Lcd_Init(LCD_1);
+    Lcd_Init(LCD_2);
 
-    // Hien thi 7-seg on dinh sau khi khoi tao
-    for (i = 0; i < 100; i++)
-    {
-        Display_7Seg();
-    }
+    Lcd_Goto(LCD_1, 0, 0);
+    Lcd_String(LCD_1, "HE THONG NHUNG");
+    Lcd_Goto(LCD_1, 1, 0);
+    Lcd_String(LCD_1, "SMART PARKING");
 
-    // Vong lap chinh
+    Update_LCD2_Slot();
+
     while (1)
     {
-        // Hien thi 7-segment lien tuc
-        Display_7Seg();
-
-        // Kiem tra nut nhan
-        Process_Button();
+        Handle_Button();
+        Servo_Control();
     }
 }

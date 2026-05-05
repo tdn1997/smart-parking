@@ -1,4 +1,4 @@
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 18:51:13 PAGE 1   
+C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 1   
 
 
 C51 COMPILER V9.01, COMPILATION OF MODULE MAIN
@@ -9,454 +9,514 @@ line level    source
 
    1          #include <reg52.h>
    2          
-   3          // ======= DINH NGHIA CHAN LCD (4-BIT MODE) =======
-   4          sbit RS = P2 ^ 6; // Register Select
-   5          sbit EN = P2 ^ 7; // Enable
-   6          sbit D4 = P3 ^ 4; // Data bit 4
-   7          sbit D5 = P3 ^ 5; // Data bit 5
-   8          sbit D6 = P3 ^ 6; // Data bit 6
-   9          sbit D7 = P3 ^ 7; // Data bit 7
+   3          // ======= LCD1: LCD HIEN TAI (4-BIT MODE) =======
+   4          sbit RS = P2 ^ 6;
+   5          sbit EN = P2 ^ 7;
+   6          sbit D4 = P3 ^ 4;
+   7          sbit D5 = P3 ^ 5;
+   8          sbit D6 = P3 ^ 6;
+   9          sbit D7 = P3 ^ 7;
   10          
-  11          // ======= DINH NGHIA CHAN NUT NHAN =======
-  12          sbit BTN_IN = P1 ^ 6;  // Nut giam
-  13          sbit BTN_OUT = P1 ^ 7; // Nut tang
-  14          
-  15          sbit SERVO_PIN = P1 ^ 4; // vao
-  16          sbit MOTOR_2 = P1 ^ 5;   // ra
-  17          
-  18          // Biến điều khiển góc servo
-  19          unsigned int servo_pulse = 1500; // Pulse width (us): 1000 = -90°, 1500 = 0°, 2000 = +90°
-  20          bit servo_state = 0;             // 0 = OFF period, 1 = ON period
-  21          
-  22          // ======= DINH NGHIA CHAN 7-SEGMENT =======
-  23          #define SEG_DATA P0 // Du lieu 7-segment (A-G)
-  24          sbit SEG1 = P2 ^ 0; // COM1 - Hang chuc
-  25          sbit SEG2 = P2 ^ 1; // COM2 - Hang don vi
+  11          // ======= LCD2: HIEN THI CHO TRONG (4-BIT MODE) =======
+  12          sbit LCD2_RS = P2 ^ 4;
+  13          sbit LCD2_EN = P2 ^ 5;
+  14          sbit LCD2_D4 = P3 ^ 0;
+  15          sbit LCD2_D5 = P3 ^ 1;
+  16          sbit LCD2_D6 = P3 ^ 2;
+  17          sbit LCD2_D7 = P3 ^ 3;
+  18          
+  19          // ======= BUTTON =======
+  20          sbit BTN_IN = P1 ^ 6;
+  21          sbit BTN_OUT = P1 ^ 7;
+  22          
+  23          // ======= SERVO =======
+  24          sbit SERVO_PIN_IN = P1 ^ 4;
+  25          sbit SERVO_PIN_OUT = P1 ^ 5;
   26          
-  27          // ======= MA HIEN THI 7-SEGMENT =======
-  28          unsigned char code seg_code[] = {
-  29              0xC0, // 0
-  30              0xF9, // 1
-  31              0xA4, // 2
-  32              0xB0, // 3
-  33              0x99, // 4
-  34              0x92, // 5
-  35              0x82, // 6
-  36              0xF8, // 7
-  37              0x80, // 8
-  38              0x90  // 9
-  39          };
+  27          #define CHANNEL_IN  0
+  28          #define CHANNEL_OUT 1
+  29          
+  30          #define SERVO_CLOSE_PULSE 800
+  31          #define SERVO_OPEN_PULSE  2200
+  32          #define SERVO_PERIOD_US   20000
+  33          #define SERVO_TICK_US     100
+  34          #define SERVO_HOLD_MS     10000
+  35          
+  36          #define DEBOUNCE_MS       30
+  37          #define TIMER0_RELOAD     (65536 - SERVO_TICK_US)
+  38          #define LCD_1             0
+  39          #define LCD_2             1
   40          
-  41          // ======= BIEN TOAN CUC =======
-  42          unsigned char temp = 30;
-  43          
-  44          // ======= HAM TRE =======
-  45          void delay_ms(unsigned int ms)
-  46          {
-  47   1          unsigned int i, j;
-  48   1          for (i = 0; i < ms; i++)
-  49   1              for (j = 0; j < 120; j++)
-  50   1                  ;
-  51   1      }
+  41          
+  42          // ======= BIEN TOAN CUC =======
+  43          unsigned char temp = 30;
+  44          volatile unsigned int system_ms = 0;
+  45          volatile unsigned int pwm_counter_us = 0;
+  46          volatile unsigned int servo_pulse_in = SERVO_CLOSE_PULSE;
+  47          volatile unsigned int servo_pulse_out = SERVO_CLOSE_PULSE;
+  48          volatile unsigned int in_timer = 0;
+  49          volatile unsigned int out_timer = 0;
+  50          bit in_active = 0;
+  51          bit out_active = 0;
   52          
-  53          // ======= HAM GUI 4-BIT CHO LCD =======
-  54          void LCD_Send4Bit(unsigned char cX)
+  53          // ======= HAM TRE =======
+  54          void delay_ms(unsigned int ms)
   55          {
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 18:51:13 PAGE 2   
+C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 2   
 
-  56   1          D7 = (cX >> 3) & 1;
-  57   1          D6 = (cX >> 2) & 1;
-  58   1          D5 = (cX >> 1) & 1;
-  59   1          D4 = cX & 1;
+  56   1          unsigned int i, j;
+  57   1          for (i = 0; i < ms; i++)
+  58   1              for (j = 0; j < 120; j++)
+  59   1                  ;
   60   1      }
   61          
-  62          // ======= HAM GUI XUNG ENABLE =======
-  63          void LCD_Enable()
+  62          // ======= LCD =======
+  63          void Lcd_SetRS(unsigned char lcd, unsigned char value)
   64          {
-  65   1          EN = 1;
-  66   1          delay_ms(1);
-  67   1          EN = 0;
-  68   1          delay_ms(1);
+  65   1          if (lcd == LCD_1)
+  66   1              RS = value;
+  67   1          else
+  68   1              LCD2_RS = value;
   69   1      }
   70          
-  71          // ======= HAM GUI LENH CHO LCD =======
-  72          void LCD_Command(unsigned char cmd)
-  73          {
-  74   1          RS = 0;
-  75   1          LCD_Send4Bit(cmd >> 4);
-  76   1          LCD_Enable();
-  77   1          LCD_Send4Bit(cmd);
-  78   1          LCD_Enable();
-  79   1          delay_ms(2);
-  80   1      }
-  81          
-  82          // ======= HAM GUI DU LIEU CHO LCD =======
-  83          void LCD_Char(unsigned char chr)
-  84          {
-  85   1          RS = 1;
-  86   1          LCD_Send4Bit(chr >> 4);
-  87   1          LCD_Enable();
-  88   1          LCD_Send4Bit(chr);
-  89   1          LCD_Enable();
-  90   1          delay_ms(2);
-  91   1      }
-  92          
-  93          // ======= HAM KHOI TAO LCD 4-BIT =======
-  94          void LCD_Init()
-  95          {
-  96   1          delay_ms(50); // >40ms sau khi cấp nguồn
-  97   1          RS = 0;
-  98   1          EN = 0;
-  99   1      
- 100   1          // Khởi tạo mạnh cho 4-bit mode
- 101   1          LCD_Send4Bit(0x03);
- 102   1          LCD_Enable();
- 103   1          delay_ms(5);
- 104   1      
- 105   1          LCD_Send4Bit(0x03);
- 106   1          LCD_Enable();
- 107   1          delay_ms(5);
- 108   1      
- 109   1          LCD_Send4Bit(0x03);
- 110   1          LCD_Enable();
- 111   1          delay_ms(5);
- 112   1      
- 113   1          LCD_Send4Bit(0x02); // Chuyển sang 4-bit
- 114   1          LCD_Enable();
- 115   1          delay_ms(5);
- 116   1      
- 117   1          // Các lệnh cấu hình
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 18:51:13 PAGE 3   
+  71          void Lcd_Send4Bit(unsigned char lcd, unsigned char cX)
+  72          {
+  73   1          if (lcd == LCD_1)
+  74   1          {
+  75   2              D7 = (cX >> 3) & 1;
+  76   2              D6 = (cX >> 2) & 1;
+  77   2              D5 = (cX >> 1) & 1;
+  78   2              D4 = cX & 1;
+  79   2          }
+  80   1          else
+  81   1          {
+  82   2              LCD2_D7 = (cX >> 3) & 1;
+  83   2              LCD2_D6 = (cX >> 2) & 1;
+  84   2              LCD2_D5 = (cX >> 1) & 1;
+  85   2              LCD2_D4 = cX & 1;
+  86   2          }
+  87   1      }
+  88          
+  89          void Lcd_Enable(unsigned char lcd)
+  90          {
+  91   1          if (lcd == LCD_1)
+  92   1          {
+  93   2              EN = 1;
+  94   2              delay_ms(1);
+  95   2              EN = 0;
+  96   2          }
+  97   1          else
+  98   1          {
+  99   2              LCD2_EN = 1;
+ 100   2              delay_ms(1);
+ 101   2              LCD2_EN = 0;
+ 102   2          }
+ 103   1          delay_ms(1);
+ 104   1      }
+ 105          
+ 106          void Lcd_Write(unsigned char lcd, unsigned char rs, unsigned char value)
+ 107          {
+ 108   1          Lcd_SetRS(lcd, rs);
+ 109   1          Lcd_Send4Bit(lcd, value >> 4);
+ 110   1          Lcd_Enable(lcd);
+ 111   1          Lcd_Send4Bit(lcd, value);
+ 112   1          Lcd_Enable(lcd);
+ 113   1          delay_ms(2);
+ 114   1      }
+ 115          
+ 116          void Lcd_Command(unsigned char lcd, unsigned char cmd)
+ 117          {
+C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 3   
 
- 118   1          LCD_Command(0x28); // 4-bit, 2 dòng, font 5x8
- 119   1          LCD_Command(0x0C); // Display ON, Cursor OFF, Blink OFF
- 120   1          LCD_Command(0x06); // Tăng con trỏ sang phải
- 121   1          LCD_Command(0x01); // Clear màn hình
- 122   1          delay_ms(10);
- 123   1      }
- 124          
- 125          // ======= HAM DIA CHI CON TRO VT TRI =======
- 126          void LCD_Goto(unsigned char row, unsigned char col)
+ 118   1          Lcd_Write(lcd, 0, cmd);
+ 119   1      }
+ 120          
+ 121          void Lcd_Char(unsigned char lcd, unsigned char chr)
+ 122          {
+ 123   1          Lcd_Write(lcd, 1, chr);
+ 124   1      }
+ 125          
+ 126          void Lcd_Init(unsigned char lcd)
  127          {
- 128   1          unsigned char address;
- 129   1          if (row == 0)
- 130   1              address = 0x80 + col; // Clear
- 131   1          else
- 132   1              address = 0xC0 + col;
- 133   1          LCD_Command(address);
- 134   1      }
- 135          
- 136          // ======= HAM HIEN THI CHUOI =======
- 137          void LCD_String(char *str)
- 138          {
- 139   1          while (*str)
- 140   1          {
- 141   2              LCD_Char(*str++);
+ 128   1          unsigned char i;
+ 129   1      
+ 130   1          delay_ms(50);
+ 131   1          Lcd_SetRS(lcd, 0);
+ 132   1          if (lcd == LCD_1)
+ 133   1              EN = 0;
+ 134   1          else
+ 135   1              LCD2_EN = 0;
+ 136   1      
+ 137   1          for (i = 0; i < 3; i++)
+ 138   1          {
+ 139   2              Lcd_Send4Bit(lcd, 0x03);
+ 140   2              Lcd_Enable(lcd);
+ 141   2              delay_ms(5);
  142   2          }
- 143   1      }
- 144          
- 145          // ======= HAM HIEN THI SO =======
- 146          void LCD_Number(unsigned char num)
- 147          {
- 148   1          LCD_Char((num / 10) + '0');
- 149   1          LCD_Char((num % 10) + '0');
- 150   1      }
- 151          
- 152          // ======= HAM HIEN THI 7-SEGMENT =======
- 153          void Display_7Seg()
- 154          {
- 155   1          unsigned char chuc, donvi;
- 156   1          chuc = temp / 10;
- 157   1          donvi = temp % 10;
- 158   1      
- 159   1          // ANODE chung: SEG1 de bat, SEG2 de tat
- 160   1          // Hien thi hang chuc
- 161   1          SEG1 = 0;
- 162   1          SEG2 = 0;
- 163   1          SEG_DATA = seg_code[chuc];
- 164   1          SEG1 = 1;
- 165   1          delay_ms(2);
- 166   1      
- 167   1          // Hien thi hang don vi
- 168   1          SEG1 = 0;
- 169   1          SEG2 = 0;
- 170   1          SEG_DATA = seg_code[donvi];
- 171   1          SEG2 = 1;
- 172   1          delay_ms(2);
- 173   1      }
- 174          
- 175          // ======= HAM CAP NHAT LCD =======
- 176          // ======= MẢNG 50 BIỂN SỐ XE NGẪU NHIÊN =======
- 177          unsigned char code license_plates[50][15] = {
- 178              "92_D1_859.45",
- 179              "66_H3_854.23",
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 18:51:13 PAGE 4   
+ 143   1      
+ 144   1          Lcd_Send4Bit(lcd, 0x02);
+ 145   1          Lcd_Enable(lcd);
+ 146   1          delay_ms(5);
+ 147   1      
+ 148   1          Lcd_Command(lcd, 0x28);
+ 149   1          Lcd_Command(lcd, 0x0C);
+ 150   1          Lcd_Command(lcd, 0x06);
+ 151   1          Lcd_Command(lcd, 0x01);
+ 152   1          delay_ms(10);
+ 153   1      }
+ 154          
+ 155          void Lcd_Goto(unsigned char lcd, unsigned char row, unsigned char col)
+ 156          {
+ 157   1          if (row == 0)
+ 158   1              Lcd_Command(lcd, 0x80 + col);
+ 159   1          else
+ 160   1              Lcd_Command(lcd, 0xC0 + col);
+ 161   1      }
+ 162          
+ 163          void Lcd_String(unsigned char lcd, char *str)
+ 164          {
+ 165   1          while (*str)
+ 166   1              Lcd_Char(lcd, *str++);
+ 167   1      }
+ 168          
+ 169          void Lcd_Number(unsigned char lcd, unsigned char num)
+ 170          {
+ 171   1          unsigned char tens = 0;
+ 172   1      
+ 173   1          while (num >= 10)
+ 174   1          {
+ 175   2              num -= 10;
+ 176   2              tens++;
+ 177   2          }
+ 178   1      
+ 179   1          Lcd_Char(lcd, tens + '0');
+C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 4   
 
- 180              "95_X2_704.64",
- 181              "53_A2_323.39",
- 182              "83_Z1_674.35",
- 183              "97_X7_325.67",
- 184              "89_K1_877.30",
- 185              "96_S6_384.29",
- 186              "64_M2_194.58",
- 187              "57_N6_718.43",
- 188              "53_T9_227.58",
- 189              "56_X5_949.90",
- 190              "91_N4_821.18",
- 191              "53_H5_181.39",
- 192              "57_P5_564.91",
- 193              "74_F6_463.36",
- 194              "94_K2_723.91",
- 195              "61_X4_267.69",
- 196              "75_K9_324.97",
- 197              "71_B4_941.14",
- 198              "71_P5_167.37",
- 199              "88_M4_771.73",
- 200              "76_T3_371.27",
- 201              "66_X9_369.84",
- 202              "78_Y7_470.38",
- 203              "59_V8_193.16",
- 204              "58_E3_911.97",
- 205              "78_Z2_494.58",
- 206              "90_T9_357.80",
- 207              "51_D9_868.44",
- 208              "93_M2_400.65",
- 209              "61_T1_839.43",
- 210              "83_F9_208.90",
- 211              "70_V4_256.57",
- 212              "61_X9_100.86",
- 213              "71_U1_214.56",
- 214              "70_H1_346.82",
- 215              "56_C8_935.18",
- 216              "85_E3_775.70",
- 217              "86_F5_640.87",
- 218              "78_G9_873.98",
- 219              "63_L7_787.93",
- 220              "74_T9_562.25",
- 221              "66_H2_446.12",
- 222              "89_X4_702.38",
- 223              "51_C1_334.18",
- 224              "53_M2_626.40",
- 225              "68_U4_652.26",
- 226              "98_Y8_348.70",
- 227              "77_G2_199.94"};
- 228          
- 229          // ================== BIẾN TOÀN CỤC (thêm vào phần khai báo biến) ==================
- 230          unsigned char current_index = 0; // Biến theo dõi biển số hiện tại
- 231          
- 232          void Update_LCD()
- 233          {
- 234   1          LCD_Command(0x01); // Clear màn hình
- 235   1      
- 236   1          // Tắt 7-segment để tránh xung dot
- 237   1          SEG1 = 1;
- 238   1          SEG2 = 1;
- 239   1          SEG_DATA = 0xFF;
- 240   1          delay_ms(5);
- 241   1      
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 18:51:13 PAGE 5   
+ 180   1          Lcd_Char(lcd, num + '0');
+ 181   1      }
+ 182          
+ 183          void Update_LCD2_Slot()
+ 184          {
+ 185   1          static unsigned char last_temp = 255;
+ 186   1      
+ 187   1          if (last_temp == temp)
+ 188   1              return;
+ 189   1      
+ 190   1          last_temp = temp;
+ 191   1      
+ 192   1          Lcd_Goto(LCD_2, 0, 0);
+ 193   1          Lcd_String(LCD_2, "CHO CON TRONG   ");
+ 194   1      
+ 195   1          Lcd_Goto(LCD_2, 1, 0);
+ 196   1          Lcd_Number(LCD_2, temp);
+ 197   1          Lcd_String(LCD_2, "              ");
+ 198   1      }
+ 199          
+ 200          // ======= MANG 50 BIEN SO XE NGAU NHIEN =======
+ 201          unsigned char code license_plates[50][15] = {
+ 202              "92_D1_859.45",
+ 203              "66_H3_854.23",
+ 204              "95_X2_704.64",
+ 205              "53_A2_323.39",
+ 206              "83_Z1_674.35",
+ 207              "97_X7_325.67",
+ 208              "89_K1_877.30",
+ 209              "96_S6_384.29",
+ 210              "64_M2_194.58",
+ 211              "57_N6_718.43",
+ 212              "53_T9_227.58",
+ 213              "56_X5_949.90",
+ 214              "91_N4_821.18",
+ 215              "53_H5_181.39",
+ 216              "57_P5_564.91",
+ 217              "74_F6_463.36",
+ 218              "94_K2_723.91",
+ 219              "61_X4_267.69",
+ 220              "75_K9_324.97",
+ 221              "71_B4_941.14",
+ 222              "71_P5_167.37",
+ 223              "88_M4_771.73",
+ 224              "76_T3_371.27",
+ 225              "66_X9_369.84",
+ 226              "78_Y7_470.38",
+ 227              "59_V8_193.16",
+ 228              "58_E3_911.97",
+ 229              "78_Z2_494.58",
+ 230              "90_T9_357.80",
+ 231              "51_D9_868.44",
+ 232              "93_M2_400.65",
+ 233              "61_T1_839.43",
+ 234              "83_F9_208.90",
+ 235              "70_V4_256.57",
+ 236              "61_X9_100.86",
+ 237              "71_U1_214.56",
+ 238              "70_H1_346.82",
+ 239              "56_C8_935.18",
+ 240              "85_E3_775.70",
+ 241              "86_F5_640.87",
+C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 5   
 
- 242   1          // Dong 1:
- 243   1          LCD_Goto(0, 0);
- 244   1          LCD_String("BIEN SO: ");
- 245   1      
- 246   1          // Dong 2: Hiển thị biển số theo thứ tự tăng dần
- 247   1          LCD_Goto(1, 0);
- 248   1          LCD_String(license_plates[current_index]);
- 249   1      
- 250   1          current_index++;
- 251   1          if (current_index >= 50)
- 252   1              current_index = 0;
- 253   1      }
- 254          void servo_delay(unsigned char us) // delay nhỏ, tinh chỉnh dễ
- 255          {
- 256   1          unsigned char i;
- 257   1          for (i = 0; i < us; i++)
- 258   1              ;
- 259   1      }
- 260          
- 261          // Khởi tạo Timer cho Servo PWM (gọi 1 lần trong main())
- 262          void Servo_Init(void)
- 263          {
- 264   1          TMOD = 0x11; // Timer0 và Timer1 mode 1 (16-bit)
- 265   1      
- 266   1          // Timer 0: Tạo chu kỳ 20ms (50Hz)
- 267   1          TH0 = (65536 - 20000) >> 8; // Giá trị ban đầu cho 20ms
- 268   1          TL0 = (65536 - 20000) & 0xFF;
- 269   1      
- 270   1          // Timer 1: Tạo pulse width (sẽ thay đổi động)
- 271   1          TH1 = (65536 - 1500) >> 8; // Ban đầu 1.5ms
- 272   1          TL1 = (65536 - 1500) & 0xFF;
- 273   1      
- 274   1          ET0 = 1; // Enable Timer 0 interrupt
- 275   1          ET1 = 1; // Enable Timer 1 interrupt
- 276   1          EA = 1;  // Enable global interrupt
+ 242              "78_G9_873.98",
+ 243              "63_L7_787.93",
+ 244              "74_T9_562.25",
+ 245              "66_H2_446.12",
+ 246              "89_X4_702.38",
+ 247              "51_C1_334.18",
+ 248              "53_M2_626.40",
+ 249              "68_U4_652.26",
+ 250              "98_Y8_348.70",
+ 251              "77_G2_199.94"};
+ 252          
+ 253          unsigned char current_index = 0;
+ 254          
+ 255          void Update_LCD()
+ 256          {
+ 257   1          Lcd_Command(LCD_1, 0x01);
+ 258   1      
+ 259   1          Lcd_Goto(LCD_1, 0, 0);
+ 260   1          Lcd_String(LCD_1, "BIEN SO: ");
+ 261   1      
+ 262   1          Lcd_Goto(LCD_1, 1, 0);
+ 263   1          Lcd_String(LCD_1, license_plates[current_index]);
+ 264   1          
+ 265   1          current_index++;
+ 266   1          if (current_index >= 50)
+ 267   1              current_index = 0;
+ 268   1      }
+ 269          
+ 270          // ======= SERVO =======
+ 271          void Servo_SetPulse(unsigned char channel, unsigned int pulse)
+ 272          {
+ 273   1          unsigned char ea_state;
+ 274   1      
+ 275   1          ea_state = EA;
+ 276   1          EA = 0;
  277   1      
- 278   1          TR0 = 1; // Bật Timer 0
- 279   1          TR1 = 0; // Timer 1 sẽ bật trong ISR
- 280   1      }
- 281          // Timer 0 Interrupt: Tạo chu kỳ 20ms
- 282          void Timer0_ISR() interrupt 1
- 283          {
- 284   1          // Reload cho 20ms
- 285   1          TH0 = (65536 - 20000) >> 8;
- 286   1          TL0 = (65536 - 20000) & 0xFF;
- 287   1      
- 288   1          servo_state = 1; // Bắt đầu pulse ON
- 289   1          SERVO_PIN = 1;
- 290   1      
- 291   1          // Load Timer 1 với pulse width hiện tại
- 292   1          TH1 = (65536 - servo_pulse) >> 8;
- 293   1          TL1 = (65536 - servo_pulse) & 0xFF;
- 294   1      
- 295   1          TR1 = 1; // Bật Timer 1
- 296   1      }
- 297          
- 298          // Timer 1 Interrupt: Kết thúc pulse (tắt pin)
- 299          void Timer1_ISR() interrupt 3
- 300          {
- 301   1          TR1 = 0; // Tắt Timer 1
- 302   1          SERVO_PIN = 0;
- 303   1          servo_state = 0;
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 18:51:13 PAGE 6   
+ 278   1          if (channel == CHANNEL_IN)
+ 279   1              servo_pulse_in = pulse;
+ 280   1          else
+ 281   1              servo_pulse_out = pulse;
+ 282   1      
+ 283   1          EA = ea_state;
+ 284   1      }
+ 285          
+ 286          void Servo_Open(unsigned char channel)
+ 287          {
+ 288   1          unsigned char ea_state;
+ 289   1      
+ 290   1          Servo_SetPulse(channel, SERVO_OPEN_PULSE);
+ 291   1      
+ 292   1          ea_state = EA;
+ 293   1          EA = 0;
+ 294   1          if (channel == CHANNEL_IN)
+ 295   1          {
+ 296   2              in_timer = SERVO_HOLD_MS;
+ 297   2              in_active = 1;
+ 298   2          }
+ 299   1          else
+ 300   1          {
+ 301   2              out_timer = SERVO_HOLD_MS;
+ 302   2              out_active = 1;
+ 303   2          }
+C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 6   
 
- 304   1      }
- 305          
- 306          // Mở thanh chắn (góc dương ≈ +70° ~ +90°)
- 307          void Barrier_Open(void)
+ 304   1          EA = ea_state;
+ 305   1      }
+ 306          
+ 307          void Servo_Close(unsigned char channel)
  308          {
- 309   1          servo_pulse = 2200; // Thử vùng 2000 ~ 2500
- 310   1      }
- 311          
- 312          // Đóng thanh chắn (góc -90°)
- 313          void Barrier_Close(void)
- 314          {
- 315   1          servo_pulse = 800; // Thử vùng 700 ~ 1000
- 316   1      }
- 317          
- 318          // ======= HAM XU LY NUT NHAN =======
- 319          void Process_Button()
- 320          {
- 321   1          static unsigned char btn_pressed = 0;
- 322   1          unsigned char i;
- 323   1      
- 324   1          // Nut tang (nhan = 0)
- 325   1          if (BTN_OUT == 0 && !btn_pressed)
- 326   1          {
- 327   2              delay_ms(30);
- 328   2              if (BTN_OUT == 0)
- 329   2              {
- 330   3                  btn_pressed = 1;
- 331   3                  if (temp < 99)
- 332   3                  {
- 333   4                      temp++;
- 334   4                  }
- 335   3                  Update_LCD();
- 336   3      
- 337   3                  // Hien thi 7-seg on dinh sau khi cap nhat
- 338   3                  for (i = 0; i < 100; i++)
- 339   3                  {
- 340   4                      Display_7Seg();
- 341   4                  }
- 342   3      
- 343   3                  Barrier_Open(); // Mở thanh chắn
- 344   3                  delay_ms(1500); // Giữ 1.5 giây (có thể thay bằng non-blocking)
- 345   3      
- 346   3                  Barrier_Close(); // Đóng thanh chắn
- 347   3              }
- 348   2          }
- 349   1      
- 350   1          // Nut giam (nhan = 0)
- 351   1          if (BTN_IN == 0 && !btn_pressed)
- 352   1          {
- 353   2              delay_ms(30);
- 354   2              if (BTN_IN == 0)
- 355   2              {
- 356   3                  btn_pressed = 1;
- 357   3                  if (temp > 0)
- 358   3                  {
- 359   4                      temp--;
- 360   4                  }
- 361   3                  Update_LCD();
- 362   3      
- 363   3                  // Hien thi 7-seg on dinh sau khi cap nhat
- 364   3                  for (i = 0; i < 100; i++)
- 365   3                  {
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 18:51:13 PAGE 7   
+ 309   1          unsigned char ea_state;
+ 310   1      
+ 311   1          Servo_SetPulse(channel, SERVO_CLOSE_PULSE);
+ 312   1      
+ 313   1          ea_state = EA;
+ 314   1          EA = 0;
+ 315   1          if (channel == CHANNEL_IN)
+ 316   1              in_active = 0;
+ 317   1          else
+ 318   1              out_active = 0;
+ 319   1          EA = ea_state;
+ 320   1      }
+ 321          
+ 322          void Servo_Init(void)
+ 323          {
+ 324   1          SERVO_PIN_IN = 0;
+ 325   1          SERVO_PIN_OUT = 0;
+ 326   1      
+ 327   1          TMOD = (TMOD & 0xF0) | 0x01;
+ 328   1          TH0 = TIMER0_RELOAD >> 8;
+ 329   1          TL0 = TIMER0_RELOAD & 0xFF;
+ 330   1      
+ 331   1          ET0 = 1;
+ 332   1          EA = 1;
+ 333   1          TR0 = 1;
+ 334   1      }
+ 335          
+ 336          void Timer0_ISR() interrupt 1
+ 337          {
+ 338   1          static unsigned char ms_divider = 0;
+ 339   1      
+ 340   1          TH0 = TIMER0_RELOAD >> 8;
+ 341   1          TL0 = TIMER0_RELOAD & 0xFF;
+ 342   1      
+ 343   1          pwm_counter_us += SERVO_TICK_US;
+ 344   1          if (pwm_counter_us >= SERVO_PERIOD_US)
+ 345   1          {
+ 346   2              pwm_counter_us = 0;
+ 347   2              SERVO_PIN_IN = 1;
+ 348   2              SERVO_PIN_OUT = 1;
+ 349   2          }
+ 350   1      
+ 351   1          if (pwm_counter_us >= servo_pulse_in)
+ 352   1              SERVO_PIN_IN = 0;
+ 353   1          if (pwm_counter_us >= servo_pulse_out)
+ 354   1              SERVO_PIN_OUT = 0;
+ 355   1      
+ 356   1          ms_divider++;
+ 357   1          if (ms_divider >= 10)
+ 358   1          {
+ 359   2              ms_divider = 0;
+ 360   2              system_ms++;
+ 361   2      
+ 362   2              if (in_active && in_timer > 0)
+ 363   2                  in_timer--;
+ 364   2              if (out_active && out_timer > 0)
+ 365   2                  out_timer--;
+C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 7   
 
- 366   4                      Display_7Seg();
- 367   4                  }
- 368   3      
- 369   3                  Barrier_Open(); // Mở thanh chắn
- 370   3                  delay_ms(1500); // Giữ 1.5 giây (có thể thay bằng non-blocking)
- 371   3      
- 372   3                  Barrier_Close(); // Đóng thanh chắn
- 373   3              }
- 374   2          }
- 375   1      
- 376   1          // Reset trang thai
- 377   1          if (BTN_OUT == 1 && BTN_IN == 1)
- 378   1          {
- 379   2              btn_pressed = 0;
- 380   2          }
- 381   1      }
- 382          
- 383          // ======= HAM MAIN =======
- 384          void main()
- 385          {
- 386   1          unsigned char i;
- 387   1      
- 388   1          // Cau hinh port
- 389   1          P3 = 0xFF; // Set cao de on dinh
- 390   1          P1 = 0xFF; // Port 1 input (pull-up)
- 391   1          P2 = 0x00; // Port 2 output
- 392   1          P3 = 0x00; // Port 3 output
- 393   1      
- 394   1          // Tat 7-segment ban dau
- 395   1          SEG1 = 1;
- 396   1          SEG2 = 1;
- 397   1          SEG_DATA = 0xFF;
- 398   1      
- 399   1          Servo_Init();    // Khởi tạo servo PWM interrupt
- 400   1          Barrier_Close(); // Ban đầu đóng thanh chắn
- 401   1      
- 402   1          // Khoi tao LCD
- 403   1          delay_ms(200);
- 404   1          LCD_Init();
- 405   1          delay_ms(100);
- 406   1          LCD_Goto(0, 0);
- 407   1          LCD_String("HE THONG NHUNG");
- 408   1          LCD_Goto(1, 0);
- 409   1          LCD_String("SMART PARKING");
- 410   1      
- 411   1          // Hien thi 7-seg on dinh sau khi khoi tao
- 412   1          for (i = 0; i < 100; i++)
- 413   1          {
- 414   2              Display_7Seg();
- 415   2          }
- 416   1      
- 417   1          // Vong lap chinh
- 418   1          while (1)
- 419   1          {
- 420   2              // Hien thi 7-segment lien tuc
- 421   2              Display_7Seg();
- 422   2      
- 423   2              // Kiem tra nut nhan
- 424   2              Process_Button();
- 425   2          }
- 426   1      }
+ 366   2          }
+ 367   1      }
+ 368          
+ 369          void Servo_Control()
+ 370          {
+ 371   1          unsigned char close_in = 0;
+ 372   1          unsigned char close_out = 0;
+ 373   1          unsigned char ea_state;
+ 374   1      
+ 375   1          ea_state = EA;
+ 376   1          EA = 0;
+ 377   1          if (in_active && in_timer == 0)
+ 378   1              close_in = 1;
+ 379   1          if (out_active && out_timer == 0)
+ 380   1              close_out = 1;
+ 381   1          EA = ea_state;
+ 382   1      
+ 383   1          if (close_in)
+ 384   1              Servo_Close(CHANNEL_IN);
+ 385   1      
+ 386   1          if (close_out)
+ 387   1              Servo_Close(CHANNEL_OUT);
+ 388   1      }
+ 389          
+ 390          // ======= BUTTON =======
+ 391          void Handle_Button_Event(unsigned char channel)
+ 392          {
+ 393   1          unsigned char changed = 0;
+ 394   1      
+ 395   1          if (channel == CHANNEL_IN)
+ 396   1          {
+ 397   2              if (temp > 0)
+ 398   2              {
+ 399   3                  temp--;
+ 400   3                  changed = 1;
+ 401   3              }
+ 402   2          }
+ 403   1          else
+ 404   1          {
+ 405   2              if (temp < 99)
+ 406   2              {
+ 407   3                  temp++;
+ 408   3                  changed = 1;
+ 409   3              }
+ 410   2          }
+ 411   1      
+ 412   1          if (changed)
+ 413   1              Update_LCD2_Slot();
+ 414   1      
+ 415   1          Update_LCD();
+ 416   1          Servo_Open(channel);
+ 417   1      }
+ 418          
+ 419          void Handle_Button_Channel(unsigned char channel, unsigned char current_state)
+ 420          {
+ 421   1          static unsigned char last_read[2] = {1, 1};
+ 422   1          static unsigned char stable_state[2] = {1, 1};
+ 423   1          static unsigned int last_change_ms[2] = {0, 0};
+ 424   1          unsigned int now;
+ 425   1          unsigned char ea_state;
+ 426   1      
+ 427   1          ea_state = EA;
+C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 8   
 
-C51 COMPILER V9.01   MAIN                                                                  04/14/2026 18:51:13 PAGE 8   
+ 428   1          EA = 0;
+ 429   1          now = system_ms;
+ 430   1          EA = ea_state;
+ 431   1      
+ 432   1          if (current_state != last_read[channel])
+ 433   1          {
+ 434   2              last_read[channel] = current_state;
+ 435   2              last_change_ms[channel] = now;
+ 436   2          }
+ 437   1      
+ 438   1          if ((unsigned int)(now - last_change_ms[channel]) >= DEBOUNCE_MS)
+ 439   1          {
+ 440   2              if (current_state != stable_state[channel])
+ 441   2              {
+ 442   3                  stable_state[channel] = current_state;
+ 443   3                  if (stable_state[channel] == 0)
+ 444   3                      Handle_Button_Event(channel);
+ 445   3              }
+ 446   2          }
+ 447   1      }
+ 448          
+ 449          void Handle_Button()
+ 450          {
+ 451   1          Handle_Button_Channel(CHANNEL_IN, BTN_IN);
+ 452   1          Handle_Button_Channel(CHANNEL_OUT, BTN_OUT);
+ 453   1      }
+ 454          
+ 455          // ======= MAIN =======
+ 456          void main()
+ 457          {
+ 458   1          BTN_IN = 1;
+ 459   1          BTN_OUT = 1;
+ 460   1          P1 = 0xFF;
+ 461   1          P2 = 0x00;
+ 462   1          P3 = 0x00;
+ 463   1      
+ 464   1          Servo_Init();
+ 465   1          Servo_Close(CHANNEL_IN);
+ 466   1          Servo_Close(CHANNEL_OUT);
+ 467   1      
+ 468   1          delay_ms(200);
+ 469   1          Lcd_Init(LCD_1);
+ 470   1          Lcd_Init(LCD_2);
+ 471   1      
+ 472   1          Lcd_Goto(LCD_1, 0, 0);
+ 473   1          Lcd_String(LCD_1, "HE THONG NHUNG");
+ 474   1          Lcd_Goto(LCD_1, 1, 0);
+ 475   1          Lcd_String(LCD_1, "SMART PARKING");
+ 476   1      
+ 477   1          Update_LCD2_Slot();
+ 478   1      
+ 479   1          while (1)
+ 480   1          {
+ 481   2              Handle_Button();
+ 482   2              Servo_Control();
+ 483   2          }
+ 484   1      }
 
 
 MODULE INFORMATION:   STATIC OVERLAYABLE
-   CODE SIZE        =    751    ----
-   CONSTANT SIZE    =    799    ----
+   CODE SIZE        =   1058    ----
+   CONSTANT SIZE    =    821    ----
+C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 9   
+
    XDATA SIZE       =   ----    ----
    PDATA SIZE       =   ----    ----
-   DATA SIZE        =      5       7
+   DATA SIZE        =     24      11
    IDATA SIZE       =   ----    ----
-   BIT SIZE         =      1    ----
+   BIT SIZE         =      2    ----
 END OF MODULE INFORMATION.
 
 
