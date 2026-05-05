@@ -9,11 +9,15 @@ sbit D6 = P3 ^ 6; // Data bit 6
 sbit D7 = P3 ^ 7; // Data bit 7
 
 // ======= DINH NGHIA CHAN NUT NHAN =======
-sbit BTN_IN  = P1 ^ 7; // Nut giam
-sbit BTN_OUT = P1 ^ 6; // Nut tang
+sbit BTN_IN = P1 ^ 6;  // Nut giam
+sbit BTN_OUT = P1 ^ 7; // Nut tang
 
-sbit MOTOR_1 = P1 ^ 2; // vao
-sbit MOTOR_2 = P1 ^ 3; // ra
+sbit SERVO_PIN_IN  = P1 ^ 4; // vao
+sbit SERVO_PIN_OUT = P1 ^ 5; // ra
+
+// Biến điều khiển góc servo
+unsigned int servo_pulse = 1500; // Pulse width (us): 1000 = -90°, 1500 = 0°, 2000 = +90°
+bit servo_state = 0;             // 0 = OFF period, 1 = ON period
 
 // ======= DINH NGHIA CHAN 7-SEGMENT =======
 #define SEG_DATA P0 // Du lieu 7-segment (A-G)
@@ -247,19 +251,68 @@ void Update_LCD()
     if (current_index >= 50)
         current_index = 0;
 }
-
-void moCuaChoXeVao()
+void servo_delay(unsigned char us) // delay nhỏ, tinh chỉnh dễ
 {
-
-    MOTOR_1 = 1;
-    MOTOR_2 = 0;
+    unsigned char i;
+    for (i = 0; i < us; i++)
+        ;
 }
 
-void moCuaChoXeRa()
+// Khởi tạo Timer cho Servo PWM (gọi 1 lần trong main())
+void Servo_Init(void)
 {
+    TMOD = 0x11; // Timer0 và Timer1 mode 1 (16-bit)
 
-    MOTOR_2 = 1;
-    MOTOR_1 = 0;
+    // Timer 0: Tạo chu kỳ 20ms (50Hz)
+    TH0 = (65536 - 20000) >> 8; // Giá trị ban đầu cho 20ms
+    TL0 = (65536 - 20000) & 0xFF;
+
+    // Timer 1: Tạo pulse width (sẽ thay đổi động)
+    TH1 = (65536 - 1500) >> 8; // Ban đầu 1.5ms
+    TL1 = (65536 - 1500) & 0xFF;
+
+    ET0 = 1; // Enable Timer 0 interrupt
+    ET1 = 1; // Enable Timer 1 interrupt
+    EA = 1;  // Enable global interrupt
+
+    TR0 = 1; // Bật Timer 0
+    TR1 = 0; // Timer 1 sẽ bật trong ISR
+}
+// Timer 0 Interrupt: Tạo chu kỳ 20ms
+void Timer0_ISR() interrupt 1
+{
+    // Reload cho 20ms
+    TH0 = (65536 - 20000) >> 8;
+    TL0 = (65536 - 20000) & 0xFF;
+
+    servo_state = 1; // Bắt đầu pulse ON
+    SERVO_PIN_IN = 1;
+
+    // Load Timer 1 với pulse width hiện tại
+    TH1 = (65536 - servo_pulse) >> 8;
+    TL1 = (65536 - servo_pulse) & 0xFF;
+
+    TR1 = 1; // Bật Timer 1
+}
+
+// Timer 1 Interrupt: Kết thúc pulse (tắt pin)
+void Timer1_ISR() interrupt 3
+{
+    TR1 = 0; // Tắt Timer 1
+    SERVO_PIN_IN = 0;
+    servo_state = 0;
+}
+
+// Mở thanh chắn (góc dương ≈ +70° ~ +90°)
+void Barrier_Open(void)
+{
+    servo_pulse = 2200; // Thử vùng 2000 ~ 2500
+}
+
+// Đóng thanh chắn (góc -90°)
+void Barrier_Close(void)
+{
+    servo_pulse = 800; // Thử vùng 700 ~ 1000
 }
 
 // ======= HAM XU LY NUT NHAN =======
@@ -287,7 +340,10 @@ void Process_Button()
                 Display_7Seg();
             }
 
-            moCuaChoXeVao();
+            Barrier_Open(); // Mở thanh chắn
+            delay_ms(1500); // Giữ 1.5 giây (có thể thay bằng non-blocking)
+
+            Barrier_Close(); // Đóng thanh chắn
         }
     }
 
@@ -310,7 +366,10 @@ void Process_Button()
                 Display_7Seg();
             }
 
-            moCuaChoXeRa();
+            Barrier_Open(); // Mở thanh chắn
+            delay_ms(1500); // Giữ 1.5 giây (có thể thay bằng non-blocking)
+
+            Barrier_Close(); // Đóng thanh chắn
         }
     }
 
@@ -337,8 +396,8 @@ void main()
     SEG2 = 1;
     SEG_DATA = 0xFF;
 
-    MOTOR_1 = 0;
-    MOTOR_2 = 0;
+    Servo_Init();    // Khởi tạo servo PWM interrupt
+    Barrier_Close(); // Ban đầu đóng thanh chắn
 
     // Khoi tao LCD
     delay_ms(200);
