@@ -1,4 +1,4 @@
-C51 COMPILER V9.01   SUB                                                                   05/05/2026 12:22:50 PAGE 1   
+C51 COMPILER V9.01   SUB                                                                   05/12/2026 09:15:21 PAGE 1   
 
 
 C51 COMPILER V9.01, COMPILATION OF MODULE SUB
@@ -7,14 +7,132 @@ COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE sub.c BROWSE DEBUG OBJECTEXTEND
 
 line level    source
 
+   1          #include <REGX52.H>
+   2          
+   3          // ================= FAN =================
+   4          #define FAN P2_7
+   5          
+   6          // ================= ADC =================
+   7          #define ADC_DATA P1
+   8          #define ADC_CS   P3_0
+   9          #define ADC_RD   P3_1
+  10          #define ADC_WR   P3_2
+  11          #define ADC_INTR P3_3
+  12          
+  13          // ================= LED 7 SEG =================
+  14          #define LED_DIGIT1 P2_0
+  15          #define LED_DIGIT2 P2_1
+  16          
+  17          unsigned char led7[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90};
+  18          
+  19          unsigned char nhietDo = 0;
+  20          
+  21          // ================= DELAY =================
+  22          void delay_ms(int ms)
+  23          {
+  24   1          int i,j;
+  25   1          for(i=0;i<ms;i++)
+  26   1              for(j=0;j<120;j++);
+  27   1      }
+  28          
+  29          // ================= ADC =================
+  30          unsigned char ADC_Read()
+  31          {
+  32   1          unsigned char adc_value;
+  33   1      
+  34   1          ADC_DATA = 0xFF;
+  35   1          ADC_CS = 0;
+  36   1      
+  37   1          ADC_WR = 0;
+  38   1          delay_ms(1);
+  39   1          ADC_WR = 1;
+  40   1      
+  41   1          while(ADC_INTR == 1);
+  42   1      
+  43   1          ADC_RD = 0;
+  44   1          adc_value = ADC_DATA;
+  45   1          ADC_RD = 1;
+  46   1      
+  47   1          ADC_CS = 1;
+  48   1      
+  49   1          return adc_value;
+  50   1      }
+  51          
+  52          void Update_NhietDo()
+  53          {
+  54   1          unsigned int temp;
+  55   1      
+C51 COMPILER V9.01   SUB                                                                   05/12/2026 09:15:21 PAGE 2   
+
+  56   1          temp = (unsigned int)ADC_Read() * 500 / 255;
+  57   1      
+  58   1          if(temp > 99)
+  59   1              temp = 99;
+  60   1      
+  61   1          nhietDo = (unsigned char)temp;
+  62   1      }
+  63          
+  64          // ================= DISPLAY 7 SEG =================
+  65          void display_digit(unsigned char digit, unsigned char num)
+  66          {
+  67   1          LED_DIGIT1 = 0;
+  68   1          LED_DIGIT2 = 0;
+  69   1      
+  70   1          P0 = led7[num];
+  71   1      
+  72   1          if(digit == 1)
+  73   1              LED_DIGIT1 = 1;
+  74   1          else
+  75   1              LED_DIGIT2 = 1;
+  76   1      
+  77   1          delay_ms(5);
+  78   1      
+  79   1          LED_DIGIT1 = 0;
+  80   1          LED_DIGIT2 = 0;
+  81   1      }
+  82          
+  83          void display7seg(unsigned char num)
+  84          {
+  85   1          unsigned char chuc, donvi;
+  86   1      
+  87   1          chuc = num/10;
+  88   1          donvi = num%10;
+  89   1      
+  90   1          display_digit(1, chuc);
+  91   1          display_digit(2, donvi);
+  92   1      }
+  93          
+  94          // ================= MAIN =================
+  95          void main()
+  96          {
+  97   1          while(1)
+  98   1          {
+  99   2              Update_NhietDo();
+ 100   2      
+ 101   2              if(nhietDo >= 35)
+ 102   2              {
+ 103   3                  FAN = 1;
+ 104   3              }
+ 105   2              else
+ 106   2              {
+ 107   3                  FAN = 0;
+ 108   3              }
+ 109   2      
+ 110   2              // ===== LED 7 do?n =====
+ 111   2              display7seg(nhietDo);
+ 112   2      
+ 113   2          }
+ 114   1      }
 
 
 MODULE INFORMATION:   STATIC OVERLAYABLE
-   CODE SIZE        =   ----    ----
+C51 COMPILER V9.01   SUB                                                                   05/12/2026 09:15:21 PAGE 3   
+
+   CODE SIZE        =    180    ----
    CONSTANT SIZE    =   ----    ----
    XDATA SIZE       =   ----    ----
    PDATA SIZE       =   ----    ----
-   DATA SIZE        =   ----    ----
+   DATA SIZE        =     11    ----
    IDATA SIZE       =   ----    ----
    BIT SIZE         =   ----    ----
 END OF MODULE INFORMATION.

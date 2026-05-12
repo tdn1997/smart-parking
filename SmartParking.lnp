@@ -1,3 +1,4 @@
-"main.obj" 
+"main.obj",
+"sub.obj" 
 TO "SmartParking" 
 RAMSIZE(256) 

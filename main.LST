@@ -1,4 +1,4 @@
-C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 1   
+C51 COMPILER V9.01   MAIN                                                                  05/12/2026 08:47:59 PAGE 1   
 
 
 C51 COMPILER V9.01, COMPILATION OF MODULE MAIN
@@ -62,7 +62,7 @@ line level    source
   53          // ======= HAM TRE =======
   54          void delay_ms(unsigned int ms)
   55          {
-C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 2   
+C51 COMPILER V9.01   MAIN                                                                  05/12/2026 08:47:59 PAGE 2   
 
   56   1          unsigned int i, j;
   57   1          for (i = 0; i < ms; i++)
@@ -126,7 +126,7 @@ line level    source
  115          
  116          void Lcd_Command(unsigned char lcd, unsigned char cmd)
  117          {
-C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 3   
+C51 COMPILER V9.01   MAIN                                                                  05/12/2026 08:47:59 PAGE 3   
 
  118   1          Lcd_Write(lcd, 0, cmd);
  119   1      }
@@ -190,7 +190,7 @@ line level    source
  177   2          }
  178   1      
  179   1          Lcd_Char(lcd, tens + '0');
-C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 4   
+C51 COMPILER V9.01   MAIN                                                                  05/12/2026 08:47:59 PAGE 4   
 
  180   1          Lcd_Char(lcd, num + '0');
  181   1      }
@@ -254,7 +254,7 @@ line level    source
  239              "56_C8_935.18",
  240              "85_E3_775.70",
  241              "86_F5_640.87",
-C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 5   
+C51 COMPILER V9.01   MAIN                                                                  05/12/2026 08:47:59 PAGE 5   
 
  242              "78_G9_873.98",
  243              "63_L7_787.93",
@@ -318,7 +318,7 @@ line level    source
  301   2              out_timer = SERVO_HOLD_MS;
  302   2              out_active = 1;
  303   2          }
-C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 6   
+C51 COMPILER V9.01   MAIN                                                                  05/12/2026 08:47:59 PAGE 6   
 
  304   1          EA = ea_state;
  305   1      }
@@ -382,7 +382,7 @@ line level    source
  363   2                  in_timer--;
  364   2              if (out_active && out_timer > 0)
  365   2                  out_timer--;
-C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 7   
+C51 COMPILER V9.01   MAIN                                                                  05/12/2026 08:47:59 PAGE 7   
 
  366   2          }
  367   1      }
@@ -446,7 +446,7 @@ line level    source
  425   1          unsigned char ea_state;
  426   1      
  427   1          ea_state = EA;
-C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 8   
+C51 COMPILER V9.01   MAIN                                                                  05/12/2026 08:47:59 PAGE 8   
 
  428   1          EA = 0;
  429   1          now = system_ms;
@@ -510,7 +510,7 @@ line level    source
 MODULE INFORMATION:   STATIC OVERLAYABLE
    CODE SIZE        =   1058    ----
    CONSTANT SIZE    =    821    ----
-C51 COMPILER V9.01   MAIN                                                                  05/05/2026 18:36:55 PAGE 9   
+C51 COMPILER V9.01   MAIN                                                                  05/12/2026 08:47:59 PAGE 9   
 
    XDATA SIZE       =   ----    ----
    PDATA SIZE       =   ----    ----
