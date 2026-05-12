@@ -1,4 +1,4 @@
-BL51 BANKED LINKER/LOCATER V6.22                                                        05/12/2026  09:15:21  PAGE 1
+BL51 BANKED LINKER/LOCATER V6.22                                                        05/12/2026  09:28:30  PAGE 1
 
 
 BL51 BANKED LINKER/LOCATER V6.22, INVOKED BY:
@@ -37,8 +37,9 @@ LINK MAP OF MODULE:  SmartParking_sub (SUB)
             CODE    0939H     0020H     UNIT         ?PR?_DISPLAY_DIGIT?SUB
             CODE    0959H     001CH     UNIT         ?PR?ADC_READ?SUB
             CODE    0975H     001BH     UNIT         ?PR?_DISPLAY7SEG?SUB
-            CODE    0990H     0017H     UNIT         ?PR?MAIN?SUB
-            CODE    09A7H     0010H     UNIT         ?C_INITSEG
+            CODE    0990H     001AH     UNIT         ?PR?MAIN?SUB
+            CODE    09AAH     0011H     UNIT         ?PR?HANDLE_FIRESMOKE?SUB
+            CODE    09BBH     0010H     UNIT         ?C_INITSEG
 
 
 
@@ -54,13 +55,14 @@ SEGMENT
 
 ?PR?MAIN?SUB
   +--> ?PR?UPDATE_NHIETDO?SUB
+  +--> ?PR?HANDLE_FIRESMOKE?SUB
   +--> ?PR?_DISPLAY7SEG?SUB
 
 ?PR?UPDATE_NHIETDO?SUB
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/12/2026  09:28:30  PAGE 2
+
+
   +--> ?PR?ADC_READ?SUB
-
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/12/2026  09:15:21  PAGE 2
-
 
 ?PR?ADC_READ?SUB
   +--> ?PR?_DELAY_MS?SUB
@@ -88,9 +90,14 @@ SYMBOL TABLE OF MODULE:  SmartParking_sub (SUB)
   B:00B0H.1       PUBLIC        P3_1
   B:00B0H.2       PUBLIC        P3_2
   B:00B0H.3       PUBLIC        P3_3
+  B:00B0H.5       PUBLIC        P3_5
+  B:00A0H.6       PUBLIC        P2_6
+  B:00B0H.6       PUBLIC        P3_6
   B:00A0H.7       PUBLIC        P2_7
+  B:00B0H.7       PUBLIC        P3_7
   C:0990H         PUBLIC        main
   C:0959H         PUBLIC        ADC_Read
+  C:09AAH         PUBLIC        Handle_FireSmoke
   D:0008H         PUBLIC        nhietDo
   C:08F3H         PUBLIC        _delay_ms
   D:0009H         PUBLIC        led7
@@ -103,61 +110,61 @@ SYMBOL TABLE OF MODULE:  SmartParking_sub (SUB)
   D:0004H         SYMBOL        i
   D:0002H         SYMBOL        j
   -------         ENDDO         
-  C:08F3H         LINE#         22
-  C:08F3H         LINE#         23
-  C:08F3H         LINE#         25
-  C:0903H         LINE#         26
-  C:0918H         LINE#         27
+  C:08F3H         LINE#         28
+  C:08F3H         LINE#         29
+  C:08F3H         LINE#         31
+  C:0903H         LINE#         32
+  C:0918H         LINE#         33
   -------         ENDPROC       _DELAY_MS
   -------         PROC          ADC_READ
   -------         DO            
   D:0007H         SYMBOL        adc_value
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/12/2026  09:28:30  PAGE 3
+
+
   -------         ENDDO         
-  C:0959H         LINE#         30
-  C:0959H         LINE#         31
-  C:0959H         LINE#         34
-  C:095CH         LINE#         35
-  C:095EH         LINE#         37
-  C:0960H         LINE#         38
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/12/2026  09:15:21  PAGE 3
-
-
-  C:0967H         LINE#         39
-  C:0969H         LINE#         41
-  C:096CH         LINE#         43
-  C:096EH         LINE#         44
-  C:0970H         LINE#         45
-  C:0972H         LINE#         47
-  C:0974H         LINE#         49
-  C:0974H         LINE#         50
+  C:0959H         LINE#         36
+  C:0959H         LINE#         37
+  C:0959H         LINE#         40
+  C:095CH         LINE#         41
+  C:095EH         LINE#         43
+  C:0960H         LINE#         44
+  C:0967H         LINE#         45
+  C:0969H         LINE#         47
+  C:096CH         LINE#         49
+  C:096EH         LINE#         50
+  C:0970H         LINE#         51
+  C:0972H         LINE#         53
+  C:0974H         LINE#         55
+  C:0974H         LINE#         56
   -------         ENDPROC       ADC_READ
   -------         PROC          UPDATE_NHIETDO
   -------         DO            
   D:0006H         SYMBOL        temp
   -------         ENDDO         
-  C:0919H         LINE#         52
-  C:0919H         LINE#         53
-  C:0919H         LINE#         56
-  C:092BH         LINE#         58
-  C:0934H         LINE#         59
-  C:0936H         LINE#         61
-  C:0938H         LINE#         62
+  C:0919H         LINE#         58
+  C:0919H         LINE#         59
+  C:0919H         LINE#         62
+  C:092BH         LINE#         64
+  C:0934H         LINE#         65
+  C:0936H         LINE#         67
+  C:0938H         LINE#         68
   -------         ENDPROC       UPDATE_NHIETDO
   -------         PROC          _DISPLAY_DIGIT
   D:0007H         SYMBOL        digit
   D:0005H         SYMBOL        num
-  C:0939H         LINE#         65
-  C:0939H         LINE#         66
-  C:0939H         LINE#         67
-  C:093BH         LINE#         68
-  C:093DH         LINE#         70
-  C:0944H         LINE#         72
-  C:0947H         LINE#         73
-  C:094BH         LINE#         75
-  C:094DH         LINE#         77
-  C:0954H         LINE#         79
-  C:0956H         LINE#         80
-  C:0958H         LINE#         81
+  C:0939H         LINE#         71
+  C:0939H         LINE#         72
+  C:0939H         LINE#         73
+  C:093BH         LINE#         74
+  C:093DH         LINE#         76
+  C:0944H         LINE#         78
+  C:0947H         LINE#         79
+  C:094BH         LINE#         81
+  C:094DH         LINE#         83
+  C:0954H         LINE#         85
+  C:0956H         LINE#         86
+  C:0958H         LINE#         87
   -------         ENDPROC       _DISPLAY_DIGIT
   -------         PROC          _DISPLAY7SEG
   D:0007H         SYMBOL        num
@@ -165,31 +172,48 @@ SYMBOL TABLE OF MODULE:  SmartParking_sub (SUB)
   D:0006H         SYMBOL        chuc
   D:0001H         SYMBOL        donvi
   -------         ENDDO         
-  C:0975H         LINE#         83
-  C:0975H         LINE#         84
-  C:0975H         LINE#         87
-  C:097BH         LINE#         88
-  C:0982H         LINE#         90
-  C:0989H         LINE#         91
+  C:0975H         LINE#         89
+  C:0975H         LINE#         90
+  C:0975H         LINE#         93
+  C:097BH         LINE#         94
+  C:0982H         LINE#         96
+  C:0989H         LINE#         97
   -------         ENDPROC       _DISPLAY7SEG
+BL51 BANKED LINKER/LOCATER V6.22                                                      05/12/2026  09:28:30  PAGE 4
+
+
+  -------         PROC          HANDLE_FIRESMOKE
+  C:09AAH         LINE#         101
+  C:09AAH         LINE#         102
+  C:09AAH         LINE#         103
+  C:09ADH         LINE#         104
+  C:09ADH         LINE#         105
+  C:09AFH         LINE#         106
+  C:09B1H         LINE#         107
+  C:09B3H         LINE#         108
+  C:09B4H         LINE#         110
+  C:09B4H         LINE#         111
+  C:09B6H         LINE#         112
+  C:09B8H         LINE#         113
+  C:09BAH         LINE#         114
+  C:09BAH         LINE#         115
+  -------         ENDPROC       HANDLE_FIRESMOKE
   -------         PROC          MAIN
-  C:0990H         LINE#         95
-  C:0990H         LINE#         96
-  C:0990H         LINE#         97
-  C:0990H         LINE#         98
-  C:0990H         LINE#         99
-  C:0993H         LINE#         101
-BL51 BANKED LINKER/LOCATER V6.22                                                      05/12/2026  09:15:21  PAGE 4
-
-
-  C:099AH         LINE#         102
-  C:099AH         LINE#         103
-  C:099CH         LINE#         104
-  C:099EH         LINE#         106
-  C:099EH         LINE#         107
-  C:09A0H         LINE#         108
-  C:09A0H         LINE#         111
-  C:09A5H         LINE#         113
+  C:0990H         LINE#         118
+  C:0990H         LINE#         119
+  C:0990H         LINE#         120
+  C:0990H         LINE#         121
+  C:0990H         LINE#         122
+  C:0993H         LINE#         123
+  C:0996H         LINE#         125
+  C:099DH         LINE#         126
+  C:099DH         LINE#         127
+  C:099FH         LINE#         128
+  C:09A1H         LINE#         130
+  C:09A1H         LINE#         131
+  C:09A3H         LINE#         132
+  C:09A3H         LINE#         135
+  C:09A8H         LINE#         137
   -------         ENDPROC       MAIN
   -------         ENDMOD        SUB
 
@@ -202,8 +226,8 @@ SYMBOL TABLE OF MODULE:  SmartParking_sub (SUB)
   -------         ENDMOD        ?C?UIDIV
 
 ******************************************************************************
-* RESTRICTED VERSION WITH 0800H BYTE CODE SIZE LIMIT; USED: 00C3H BYTE ( 9%) *
+* RESTRICTED VERSION WITH 0800H BYTE CODE SIZE LIMIT; USED: 00D7H BYTE (10%) *
 ******************************************************************************
 
-Program Size: data=20.0 xdata=0 code=442
+Program Size: data=20.0 xdata=0 code=462
 LINK/LOCATE RUN COMPLETE.  0 WARNING(S),  0 ERROR(S)

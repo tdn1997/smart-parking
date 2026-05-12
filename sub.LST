@@ -1,4 +1,4 @@
-C51 COMPILER V9.01   SUB                                                                   05/12/2026 09:15:21 PAGE 1   
+C51 COMPILER V9.01   SUB                                                                   05/12/2026 09:28:30 PAGE 1   
 
 
 C51 COMPILER V9.01, COMPILATION OF MODULE SUB
@@ -12,123 +12,147 @@ line level    source
    3          // ================= FAN =================
    4          #define FAN P2_7
    5          
-   6          // ================= ADC =================
-   7          #define ADC_DATA P1
-   8          #define ADC_CS   P3_0
-   9          #define ADC_RD   P3_1
-  10          #define ADC_WR   P3_2
-  11          #define ADC_INTR P3_3
-  12          
-  13          // ================= LED 7 SEG =================
-  14          #define LED_DIGIT1 P2_0
-  15          #define LED_DIGIT2 P2_1
-  16          
-  17          unsigned char led7[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90};
+   6          // ================= FIRE/SMOKE =================
+   7          #define FIRE_SENSOR P2_6
+   8          #define LED_RED     P3_5
+   9          #define BUZZER      P3_6
+  10          #define MOTOR       P3_7
+  11          
+  12          // ================= ADC =================
+  13          #define ADC_DATA P1
+  14          #define ADC_CS   P3_0
+  15          #define ADC_RD   P3_1
+  16          #define ADC_WR   P3_2
+  17          #define ADC_INTR P3_3
   18          
-  19          unsigned char nhietDo = 0;
-  20          
-  21          // ================= DELAY =================
-  22          void delay_ms(int ms)
-  23          {
-  24   1          int i,j;
-  25   1          for(i=0;i<ms;i++)
-  26   1              for(j=0;j<120;j++);
-  27   1      }
-  28          
-  29          // ================= ADC =================
-  30          unsigned char ADC_Read()
-  31          {
-  32   1          unsigned char adc_value;
-  33   1      
-  34   1          ADC_DATA = 0xFF;
-  35   1          ADC_CS = 0;
-  36   1      
-  37   1          ADC_WR = 0;
-  38   1          delay_ms(1);
-  39   1          ADC_WR = 1;
-  40   1      
-  41   1          while(ADC_INTR == 1);
+  19          // ================= LED 7 SEG =================
+  20          #define LED_DIGIT1 P2_0
+  21          #define LED_DIGIT2 P2_1
+  22          
+  23          unsigned char led7[] = {0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90};
+  24          
+  25          unsigned char nhietDo = 0;
+  26          
+  27          // ================= DELAY =================
+  28          void delay_ms(int ms)
+  29          {
+  30   1          int i,j;
+  31   1          for(i=0;i<ms;i++)
+  32   1              for(j=0;j<120;j++);
+  33   1      }
+  34          
+  35          // ================= ADC =================
+  36          unsigned char ADC_Read()
+  37          {
+  38   1          unsigned char adc_value;
+  39   1      
+  40   1          ADC_DATA = 0xFF;
+  41   1          ADC_CS = 0;
   42   1      
-  43   1          ADC_RD = 0;
-  44   1          adc_value = ADC_DATA;
-  45   1          ADC_RD = 1;
+  43   1          ADC_WR = 0;
+  44   1          delay_ms(1);
+  45   1          ADC_WR = 1;
   46   1      
-  47   1          ADC_CS = 1;
+  47   1          while(ADC_INTR == 1);
   48   1      
-  49   1          return adc_value;
-  50   1      }
-  51          
-  52          void Update_NhietDo()
-  53          {
-  54   1          unsigned int temp;
-  55   1      
-C51 COMPILER V9.01   SUB                                                                   05/12/2026 09:15:21 PAGE 2   
+  49   1          ADC_RD = 0;
+  50   1          adc_value = ADC_DATA;
+  51   1          ADC_RD = 1;
+  52   1      
+  53   1          ADC_CS = 1;
+  54   1      
+  55   1          return adc_value;
+C51 COMPILER V9.01   SUB                                                                   05/12/2026 09:28:30 PAGE 2   
 
-  56   1          temp = (unsigned int)ADC_Read() * 500 / 255;
-  57   1      
-  58   1          if(temp > 99)
-  59   1              temp = 99;
-  60   1      
-  61   1          nhietDo = (unsigned char)temp;
-  62   1      }
-  63          
-  64          // ================= DISPLAY 7 SEG =================
-  65          void display_digit(unsigned char digit, unsigned char num)
-  66          {
-  67   1          LED_DIGIT1 = 0;
-  68   1          LED_DIGIT2 = 0;
-  69   1      
-  70   1          P0 = led7[num];
-  71   1      
-  72   1          if(digit == 1)
-  73   1              LED_DIGIT1 = 1;
-  74   1          else
-  75   1              LED_DIGIT2 = 1;
-  76   1      
-  77   1          delay_ms(5);
-  78   1      
-  79   1          LED_DIGIT1 = 0;
-  80   1          LED_DIGIT2 = 0;
-  81   1      }
-  82          
-  83          void display7seg(unsigned char num)
-  84          {
-  85   1          unsigned char chuc, donvi;
-  86   1      
-  87   1          chuc = num/10;
-  88   1          donvi = num%10;
-  89   1      
-  90   1          display_digit(1, chuc);
-  91   1          display_digit(2, donvi);
-  92   1      }
-  93          
-  94          // ================= MAIN =================
-  95          void main()
-  96          {
-  97   1          while(1)
-  98   1          {
-  99   2              Update_NhietDo();
- 100   2      
- 101   2              if(nhietDo >= 35)
- 102   2              {
- 103   3                  FAN = 1;
- 104   3              }
- 105   2              else
- 106   2              {
- 107   3                  FAN = 0;
- 108   3              }
- 109   2      
- 110   2              // ===== LED 7 do?n =====
- 111   2              display7seg(nhietDo);
- 112   2      
- 113   2          }
- 114   1      }
+  56   1      }
+  57          
+  58          void Update_NhietDo()
+  59          {
+  60   1          unsigned int temp;
+  61   1      
+  62   1          temp = (unsigned int)ADC_Read() * 500 / 255;
+  63   1      
+  64   1          if(temp > 99)
+  65   1              temp = 99;
+  66   1      
+  67   1          nhietDo = (unsigned char)temp;
+  68   1      }
+  69          
+  70          // ================= DISPLAY 7 SEG =================
+  71          void display_digit(unsigned char digit, unsigned char num)
+  72          {
+  73   1          LED_DIGIT1 = 0;
+  74   1          LED_DIGIT2 = 0;
+  75   1      
+  76   1          P0 = led7[num];
+  77   1      
+  78   1          if(digit == 1)
+  79   1              LED_DIGIT1 = 1;
+  80   1          else
+  81   1              LED_DIGIT2 = 1;
+  82   1      
+  83   1          delay_ms(5);
+  84   1      
+  85   1          LED_DIGIT1 = 0;
+  86   1          LED_DIGIT2 = 0;
+  87   1      }
+  88          
+  89          void display7seg(unsigned char num)
+  90          {
+  91   1          unsigned char chuc, donvi;
+  92   1      
+  93   1          chuc = num/10;
+  94   1          donvi = num%10;
+  95   1      
+  96   1          display_digit(1, chuc);
+  97   1          display_digit(2, donvi);
+  98   1      }
+  99          
+ 100          // ================= FIRE/SMOKE =================
+ 101          void Handle_FireSmoke()
+ 102          {
+ 103   1          if(FIRE_SENSOR == 1)
+ 104   1          {
+ 105   2              LED_RED = 1;
+ 106   2              BUZZER = 1;
+ 107   2              MOTOR = 1;
+ 108   2          }
+ 109   1          else
+ 110   1          {
+ 111   2              LED_RED = 0;
+ 112   2              BUZZER = 0;
+ 113   2              MOTOR = 0;
+ 114   2          }
+ 115   1      }
+ 116          
+ 117          // ================= MAIN =================
+C51 COMPILER V9.01   SUB                                                                   05/12/2026 09:28:30 PAGE 3   
+
+ 118          void main()
+ 119          {
+ 120   1          while(1)
+ 121   1          {
+ 122   2              Update_NhietDo();
+ 123   2              Handle_FireSmoke();
+ 124   2      
+ 125   2              if(nhietDo >= 35)
+ 126   2              {
+ 127   3                  FAN = 1;
+ 128   3              }
+ 129   2              else
+ 130   2              {
+ 131   3                  FAN = 0;
+ 132   3              }
+ 133   2      
+ 134   2              // ===== LED 7 do?n =====
+ 135   2              display7seg(nhietDo);
+ 136   2      
+ 137   2          }
+ 138   1      }
 
 
 MODULE INFORMATION:   STATIC OVERLAYABLE
-C51 COMPILER V9.01   SUB                                                                   05/12/2026 09:15:21 PAGE 3   
-
-   CODE SIZE        =    180    ----
+   CODE SIZE        =    200    ----
    CONSTANT SIZE    =   ----    ----
    XDATA SIZE       =   ----    ----
    PDATA SIZE       =   ----    ----

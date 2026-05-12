@@ -3,6 +3,12 @@
 // ================= FAN =================
 #define FAN P2_7
 
+// ================= FIRE/SMOKE =================
+#define FIRE_SENSOR P2_6
+#define LED_RED     P3_5
+#define BUZZER      P3_6
+#define MOTOR       P3_7
+
 // ================= ADC =================
 #define ADC_DATA P1
 #define ADC_CS   P3_0
@@ -91,12 +97,30 @@ void display7seg(unsigned char num)
     display_digit(2, donvi);
 }
 
+// ================= FIRE/SMOKE =================
+void Handle_FireSmoke()
+{
+    if(FIRE_SENSOR == 1)
+    {
+        LED_RED = 1;
+        BUZZER = 1;
+        MOTOR = 1;
+    }
+    else
+    {
+        LED_RED = 0;
+        BUZZER = 0;
+        MOTOR = 0;
+    }
+}
+
 // ================= MAIN =================
 void main()
 {
     while(1)
     {
         Update_NhietDo();
+        Handle_FireSmoke();
 
         if(nhietDo >= 35)
         {
